@@ -50,6 +50,7 @@ export class GameManager {
         settings: settings,
         playerCount: 1,
         maxPlayers: 16,
+        status: lobby.status as 'waiting' | 'in-progress' | 'finished',
       }
 
       // Add host as first player
