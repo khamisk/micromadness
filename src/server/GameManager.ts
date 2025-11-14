@@ -93,9 +93,10 @@ export class GameManager {
 
     // Check if player already in lobby
     if (this.players.has(playerId)) {
-      // Reconnect
+      // Already in lobby - just reconnect, don't add again
       const player = this.players.get(playerId)!
       player.isConnected = true
+      console.log(`Player ${playerId} reconnected to lobby ${lobbyCode}`)
       this.broadcastLobbyState(socketId)
       return { success: true }
     }
@@ -129,6 +130,19 @@ export class GameManager {
     if (!player || !this.lobby) return
 
     this.players.delete(playerId)
+    
+    // If no players left, delete lobby from database
+    if (this.players.size === 0) {
+      console.log(`Deleting empty lobby ${this.lobby.lobbyCode} from database`)
+      try {
+        await prisma.lobby.delete({
+          where: { id: this.lobby.id }
+        })
+      } catch (error) {
+        console.error('Error deleting empty lobby:', error)
+      }
+      return
+    }
     
     // Transfer host if needed
     if (this.lobby.hostPlayerId === playerId && this.players.size > 0) {
@@ -189,8 +203,21 @@ export class GameManager {
     this.lobby.status = 'in-progress'
     this.gameStartTime = Date.now()
     
+    // Update lobby status in database
+    prisma.lobby.update({
+      where: { id: this.lobby.id },
+      data: { status: 'in-progress' }
+    }).catch((err: any) => console.error('Error updating lobby status:', err))
+    
     this.io.to(this.lobby.lobbyCode).emit('gameStarted')
+    
+    // Broadcast state immediately after game starts
     this.broadcastLobbyState()
+    
+    // Broadcast again after a short delay to ensure game page receives it
+    setTimeout(() => {
+      this.broadcastLobbyState()
+    }, 500)
 
     // Start game loop
     this.runGameLoop()

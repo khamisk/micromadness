@@ -9,13 +9,16 @@ import { LobbyState } from '@/types'
 export default function LobbyPage() {
   const params = useParams()
   const router = useRouter()
-  const { player } = usePlayer()
+  const { player, updateUsername } = usePlayer()
   const { emit, on, off, isConnected } = useSocket()
   
   const lobbyCode = params?.lobbyCode as string
   const [lobbyState, setLobbyState] = useState<LobbyState | null>(null)
   const [error, setError] = useState('')
   const [hasJoined, setHasJoined] = useState(false)
+  const [showUsernamePrompt, setShowUsernamePrompt] = useState(false)
+  const [usernameInput, setUsernameInput] = useState('')
+  const [usernameError, setUsernameError] = useState('')
 
   // Set up socket event listeners
   useEffect(() => {
@@ -55,9 +58,16 @@ export default function LobbyPage() {
     }
   }, [isConnected, player, lobbyCode, router, on, off])
 
+  // Check if username exists on mount
+  useEffect(() => {
+    if (!player?.username || player.username.trim() === '') {
+      setShowUsernamePrompt(true)
+    }
+  }, [player])
+
   // Join lobby once when connected
   useEffect(() => {
-    if (!isConnected || !player || hasJoined) return
+    if (!isConnected || !player || !player.username || hasJoined) return
 
     console.log('🎮 Attempting to join lobby:', lobbyCode)
     setHasJoined(true)
@@ -111,6 +121,59 @@ export default function LobbyPage() {
   const handleCopyCode = () => {
     navigator.clipboard.writeText(lobbyCode)
     alert('Lobby code copied!')
+  }
+
+  const handleUsernameSubmit = async () => {
+    if (!usernameInput || usernameInput.trim().length < 2) {
+      setUsernameError('Username must be at least 2 characters')
+      return
+    }
+    if (usernameInput.length > 16) {
+      setUsernameError('Username must be 16 characters or less')
+      return
+    }
+    
+    await updateUsername(usernameInput.trim())
+    setShowUsernamePrompt(false)
+    setUsernameError('')
+  }
+
+  // Show username prompt if no username
+  if (showUsernamePrompt) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="game-card max-w-md w-full">
+          <h2 className="text-2xl font-bold mb-4">Enter Your Name</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            You need a username to join this lobby
+          </p>
+          <div className="space-y-4">
+            <div>
+              <input
+                type="text"
+                className="input-field w-full"
+                value={usernameInput}
+                onChange={(e) => setUsernameInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleUsernameSubmit()}
+                placeholder="Enter username..."
+                maxLength={16}
+                autoFocus
+              />
+              {usernameError && (
+                <p className="text-red-500 text-sm mt-1">{usernameError}</p>
+              )}
+            </div>
+            
+            <button
+              onClick={handleUsernameSubmit}
+              className="btn-primary w-full py-3 text-lg"
+            >
+              Join Lobby
+            </button>
+          </div>
+        </div>
+      </main>
+    )
   }
 
   if (!lobbyState) {

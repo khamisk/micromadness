@@ -25,9 +25,11 @@ export default function GamePage() {
   useEffect(() => {
     if (!player) return
 
+    console.log('🎮 Game page loaded, setting up listeners')
     trackGameStarted(0) // Will update with actual player count
 
     const handleLobbyState = (state: LobbyState) => {
+      console.log('📊 Game page received lobby state:', state)
       setLobbyState(state)
       if (state.timeRemaining !== undefined) {
         setTimeRemaining(state.timeRemaining)
@@ -35,6 +37,7 @@ export default function GamePage() {
     }
 
     const handleMinigameStart = (minigame: MinigameConfig) => {
+      console.log('🎯 Minigame started:', minigame.name)
       setCurrentMinigame(minigame)
       setTimeRemaining(minigame.durationSeconds)
       setShowResults(false)
@@ -43,6 +46,7 @@ export default function GamePage() {
     }
 
     const handleMinigameEnd = (outcome: MinigameOutcome) => {
+      console.log('✅ Minigame ended:', outcome)
       setLastOutcome(outcome)
       setShowResults(true)
       if (currentMinigame) {
@@ -51,6 +55,7 @@ export default function GamePage() {
     }
 
     const handleGameOver = (winnerId: string, winnerUsername: string) => {
+      console.log('🏆 Game over, winner:', winnerUsername)
       const duration = Math.floor((Date.now() - gameStartTime) / 1000)
       trackGameFinished(duration)
       
@@ -71,7 +76,7 @@ export default function GamePage() {
       off('minigameEnd', handleMinigameEnd)
       off('gameOver', handleGameOver)
     }
-  }, [player, lobbyCode, router, on, off, currentMinigame, gameStartTime])
+  }, [player, lobbyCode, router, on, off, emit, currentMinigame, gameStartTime])
 
   const handleMinigameInput = (data: any) => {
     emit('minigameInput', data)
