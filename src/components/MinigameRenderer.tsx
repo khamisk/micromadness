@@ -430,17 +430,33 @@ function PrecisionMazeGame({ minigame, onInput }: { minigame: MinigameConfig; on
 
 // Stickman Dodgefall - Dodge falling objects
 function StickmanDodgefallGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [playerX, setPlayerX] = useState(250)
+  const [fallingObjects, setFallingObjects] = useState<Array<{x: number, y: number, speed: number}>>([])  
   const [survived, setSurvived] = useState(true)
+  const [dodgeCount, setDodgeCount] = useState(0)
+
+  useEffect(() => {
+    // Spawn falling objects
+    const spawnInterval = setInterval(() => {
+      setFallingObjects(prev => [...prev, {
+        x: Math.random() * 450 + 25,
+        y: 0,
+        speed: Math.random() * 3 + 2
+      }])
+    }, 1200)
+
+    return () => clearInterval(spawnInterval)
+  }, [])
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
-        setPlayerX(prev => Math.max(60, prev - 40))
-        onInput({ action: 'move', direction: 'left', x: Math.max(60, playerX - 40), timestamp: Date.now() })
+        setPlayerX(prev => Math.max(30, prev - 35))
+        onInput({ action: 'move', direction: 'left', x: Math.max(30, playerX - 35), timestamp: Date.now() })
       } else if (e.key === 'ArrowRight') {
-        setPlayerX(prev => Math.min(440, prev + 40))
-        onInput({ action: 'move', direction: 'right', x: Math.min(440, playerX + 40), timestamp: Date.now() })
+        setPlayerX(prev => Math.min(470, prev + 35))
+        onInput({ action: 'move', direction: 'right', x: Math.min(470, playerX + 35), timestamp: Date.now() })
       }
     }
 
@@ -448,80 +464,270 @@ function StickmanDodgefallGame({ minigame, onInput }: { minigame: MinigameConfig
     return () => window.removeEventListener('keydown', handleKey)
   }, [onInput, playerX])
 
-  return (
-    <div className="bg-gradient-to-br from-sky-200 to-sky-400 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4 text-gray-800">⚡ Dodge Falling Objects! ⚡</h3>
-      <p className="text-sm text-gray-700 mb-4">Use ← → Arrow Keys</p>
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !survived) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const animate = () => {
+      // Clear canvas
+      ctx.fillStyle = '#87CEEB'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Draw ground
+      ctx.fillStyle = '#2d5016'
+      ctx.fillRect(0, 380, canvas.width, 20)
+
+      // Update and draw falling objects
+      const newObjects = fallingObjects.map(obj => {
+        const newY = obj.y + obj.speed
+        
+        // Draw object
+        ctx.fillStyle = '#8B0000'
+        ctx.beginPath()
+        ctx.arc(obj.x, obj.y, 15, 0, Math.PI * 2)
+        ctx.fill()
+        
+        // Check collision with player
+        const dist = Math.sqrt((obj.x - playerX) ** 2 + (obj.y - 370) ** 2)
+        if (dist < 30 && !survived) {
+          setSurvived(false)
+          onInput({ action: 'hit', timestamp: Date.now() })
+        }
+        
+        // Check if dodged (passed player)
+        if (newY > 400 && !survived) {
+          setDodgeCount(prev => prev + 1)
+        }
+
+        return { ...obj, y: newY }
+      }).filter(obj => obj.y < 420)
+
+      setFallingObjects(newObjects)
+
+      // Draw player stickman
+      ctx.fillStyle = survived ? '#0066ff' : '#ff0000'
+      ctx.beginPath()
+      ctx.arc(playerX, 360, 12, 0, Math.PI * 2) // Head
+      ctx.fill()
       
-      <div className="relative w-full h-96 bg-gradient-to-b from-sky-300 to-green-300 rounded-lg overflow-hidden border-4 border-gray-700">
-        {/* Ground */}
-        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-b from-green-700 to-green-900" />
-        
-        {/* Player stickman */}
-        <div 
-          className="absolute bottom-20 transition-all duration-100"
-          style={{ left: `${playerX}px`, transform: 'translateX(-50%)' }}
-        >
-          <div className="text-5xl">{survived ? '🏃' : '💥'}</div>
+      ctx.strokeStyle = survived ? '#0066ff' : '#ff0000'
+      ctx.lineWidth = 4
+      ctx.beginPath()
+      ctx.moveTo(playerX, 372) // Body
+      ctx.lineTo(playerX, 395)
+      ctx.stroke()
+      
+      // Arms
+      ctx.beginPath()
+      ctx.moveTo(playerX - 10, 380)
+      ctx.lineTo(playerX + 10, 380)
+      ctx.stroke()
+      
+      // Legs
+      ctx.beginPath()
+      ctx.moveTo(playerX, 395)
+      ctx.lineTo(playerX - 8, 410)
+      ctx.moveTo(playerX, 395)
+      ctx.lineTo(playerX + 8, 410)
+      ctx.stroke()
+    }
+
+    const animationId = setInterval(animate, 1000 / 60)
+    return () => clearInterval(animationId)
+  }, [fallingObjects, playerX, survived, onInput])
+
+  return (
+    <div className="bg-gradient-to-br from-sky-200 to-sky-400 rounded-lg p-8 text-center">
+      <h3 className="text-xl font-bold mb-2 text-gray-800">⚡ Dodge Falling Objects! ⚡</h3>
+      <p className="text-sm text-gray-700 mb-2">Use ← → Arrow Keys to move!</p>
+      
+      <div className="mb-4 flex items-center justify-center gap-6">
+        <div className="bg-white px-4 py-2 rounded-lg shadow">
+          <span className={`font-bold ${survived ? 'text-green-600' : 'text-red-600'}`}>
+            {survived ? '✅ Alive' : '❌ Hit!'}
+          </span>
         </div>
-        
-        {/* Visual indicators */}
-        <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white px-4 py-2 rounded">
-          {survived ? '✅ Alive' : '❌ Hit!'}
+        <div className="bg-white px-4 py-2 rounded-lg shadow">
+          <span className="font-bold text-blue-600">🎯 Dodged: {dodgeCount}</span>
         </div>
       </div>
+      
+      <canvas 
+        ref={canvasRef} 
+        width={500} 
+        height={420}
+        className="border-4 border-gray-800 mx-auto rounded-lg"
+      />
     </div>
   )
 }
 
 // Stickman Parkour - Jump platforms
 function StickmanParkourGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
-  const [jumps, setJumps] = useState(0)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [playerY, setPlayerY] = useState(330)
+  const [velocity, setVelocity] = useState(0)
   const [isJumping, setIsJumping] = useState(false)
+  const [obstacles, setObstacles] = useState<Array<{x: number, width: number, type: 'spike' | 'gap'}>>([])  
+  const [scrollOffset, setScrollOffset] = useState(0)
+  const [jumps, setJumps] = useState(0)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    // Generate obstacles
+    const obs = []
+    for (let i = 1; i < 10; i++) {
+      obs.push({
+        x: i * 120 + Math.random() * 40,
+        width: 40 + Math.random() * 30,
+        type: Math.random() > 0.5 ? 'spike' : 'gap' as 'spike' | 'gap'
+      })
+    }
+    setObstacles(obs)
+  }, [])
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !e.repeat && !isJumping) {
+      if (e.code === 'Space' && !e.repeat && !isJumping && !failed) {
         setIsJumping(true)
+        setVelocity(-12)
         setJumps(prev => prev + 1)
         onInput({ action: 'jump', timestamp: Date.now() })
-        setTimeout(() => setIsJumping(false), 400)
       }
     }
 
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [onInput, isJumping])
+  }, [onInput, isJumping, failed])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || failed) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const animate = () => {
+      // Physics
+      const gravity = 0.6
+      let newVelocity = velocity + gravity
+      let newY = playerY + newVelocity
+      
+      const groundY = 330
+      if (newY >= groundY) {
+        newY = groundY
+        newVelocity = 0
+        setIsJumping(false)
+      }
+      
+      setPlayerY(newY)
+      setVelocity(newVelocity)
+      setScrollOffset(prev => prev + 2)
+
+      // Clear canvas
+      ctx.fillStyle = '#ffb3d9'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Draw ground
+      ctx.fillStyle = '#654321'
+      ctx.fillRect(0, 360, canvas.width, 40)
+
+      // Draw obstacles
+      obstacles.forEach(obs => {
+        const obsX = obs.x - scrollOffset
+        if (obsX > -100 && obsX < canvas.width + 100) {
+          if (obs.type === 'spike') {
+            // Draw spikes
+            ctx.fillStyle = '#ff0000'
+            for (let i = 0; i < obs.width; i += 20) {
+              ctx.beginPath()
+              ctx.moveTo(obsX + i, 360)
+              ctx.lineTo(obsX + i + 10, 340)
+              ctx.lineTo(obsX + i + 20, 360)
+              ctx.fill()
+            }
+            
+            // Collision check
+            if (Math.abs(100 - obsX) < 30 && newY > 320) {
+              setFailed(true)
+              onInput({ action: 'died', cause: 'spike', timestamp: Date.now() })
+            }
+          } else {
+            // Draw gap
+            ctx.fillStyle = '#000'
+            ctx.fillRect(obsX, 360, obs.width, 40)
+            
+            // Collision check (falling in gap)
+            if (Math.abs(100 - obsX - obs.width / 2) < 20 && newY >= groundY) {
+              setFailed(true)
+              onInput({ action: 'died', cause: 'fell', timestamp: Date.now() })
+            }
+          }
+        }
+      })
+
+      // Draw platforms
+      ctx.fillStyle = '#8B4513'
+      ctx.fillRect(0, 360, canvas.width, 5)
+
+      // Draw player stickman
+      const playerX = 100
+      ctx.fillStyle = '#0066ff'
+      ctx.beginPath()
+      ctx.arc(playerX, newY - 30, 10, 0, Math.PI * 2)
+      ctx.fill()
+      
+      ctx.strokeStyle = '#0066ff'
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.moveTo(playerX, newY - 20)
+      ctx.lineTo(playerX, newY)
+      ctx.stroke()
+      
+      // Arms
+      ctx.beginPath()
+      ctx.moveTo(playerX - 8, newY - 15)
+      ctx.lineTo(playerX + 8, newY - 15)
+      ctx.stroke()
+      
+      // Legs  
+      ctx.beginPath()
+      ctx.moveTo(playerX, newY)
+      ctx.lineTo(playerX - 7, newY + 15)
+      ctx.moveTo(playerX, newY)
+      ctx.lineTo(playerX + 7, newY + 15)
+      ctx.stroke()
+    }
+
+    const animationId = setInterval(animate, 1000 / 60)
+    return () => clearInterval(animationId)
+  }, [playerY, velocity, scrollOffset, obstacles, failed, onInput])
 
   return (
-    <div className="bg-gradient-to-br from-purple-200 to-pink-200 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4 text-gray-800">🎯 Parkour Challenge!</h3>
-      <p className="text-sm text-gray-700 mb-4">Press SPACEBAR to jump over obstacles</p>
+    <div className="bg-gradient-to-br from-purple-200 to-pink-200 rounded-lg p-8 text-center">
+      <h3 className="text-xl font-bold mb-2 text-gray-800">🎯 Parkour Challenge!</h3>
+      <p className="text-sm text-gray-700 mb-2">Press SPACEBAR to jump over obstacles!</p>
       
-      <div className="relative h-64 bg-gradient-to-b from-blue-200 to-blue-400 rounded-lg overflow-hidden border-4 border-gray-800 mb-6">
-        {/* Platforms */}
-        <div className="absolute bottom-0 left-0 w-1/3 h-16 bg-gradient-to-b from-gray-600 to-gray-800" />
-        <div className="absolute bottom-0 right-0 w-1/3 h-16 bg-gradient-to-b from-gray-600 to-gray-800" />
-        
-        {/* Jumping stickman */}
-        <div 
-          className="absolute left-1/4 transition-all duration-400"
-          style={{ 
-            bottom: isJumping ? '120px' : '64px',
-            transform: 'translateX(-50%)'
-          }}
-        >
-          <div className="text-5xl">🤸</div>
+      <div className="mb-4 flex items-center justify-center gap-4">
+        <div className="bg-white px-4 py-2 rounded-lg shadow">
+          <span className={`font-bold ${failed ? 'text-red-600' : 'text-green-600'}`}>
+            {failed ? '❌ Failed!' : '✅ Running'}
+          </span>
         </div>
-        
-        {/* Obstacles */}
-        <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-red-600 rounded" />
+        <div className="bg-white px-4 py-2 rounded-lg shadow">
+          <span className="font-bold text-purple-600">🏆 Jumps: {jumps}</span>
+        </div>
       </div>
       
-      <div className="bg-white rounded-full px-8 py-4 inline-block shadow-lg">
-        <div className="text-5xl font-bold text-purple-600">🏆 {jumps}</div>
-        <p className="text-sm text-gray-600 mt-1">Jumps</p>
-      </div>
+      <canvas 
+        ref={canvasRef} 
+        width={500} 
+        height={400}
+        className="border-4 border-gray-800 mx-auto rounded-lg"
+      />
     </div>
   )
 }
@@ -1272,72 +1478,172 @@ function CursorChainReactionGame({ minigame, onInput }: { minigame: MinigameConf
 
 // Stickman Cannon Jump - Jump over cannonballs
 function StickmanCannonJumpGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
-  const [jumps, setJumps] = useState(0)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [playerY, setPlayerY] = useState(340)
+  const [velocity, setVelocity] = useState(0)
   const [isJumping, setIsJumping] = useState(false)
-  const [cannonFired, setCannonFired] = useState(false)
+  const [cannonballs, setCannonballs] = useState<Array<{x: number, y: number, vx: number, vy: number}>>([])  
+  const [fireRate, setFireRate] = useState(2000)
+  const [jumps, setJumps] = useState(0)
+  const [hit, setHit] = useState(false)
 
   useEffect(() => {
     const fireInterval = setInterval(() => {
-      setCannonFired(true)
-      setTimeout(() => setCannonFired(false), 800)
-    }, 2000)
+      setCannonballs(prev => [...prev, {
+        x: 50,
+        y: 320,
+        vx: 8 + Math.random() * 2,
+        vy: -4 - Math.random() * 2
+      }])
+      
+      // Increase fire rate over time
+      setFireRate(prev => Math.max(800, prev - 100))
+    }, fireRate)
 
     return () => clearInterval(fireInterval)
-  }, [])
+  }, [fireRate])
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !e.repeat && !isJumping) {
+      if (e.code === 'Space' && !e.repeat && !isJumping && !hit) {
         setIsJumping(true)
+        setVelocity(-14)
         setJumps(prev => prev + 1)
         onInput({ action: 'jump', timestamp: Date.now() })
-        setTimeout(() => setIsJumping(false), 600)
       }
     }
 
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [onInput, isJumping])
+  }, [onInput, isJumping, hit])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || hit) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const animate = () => {
+      // Physics
+      const gravity = 0.8
+      let newVelocity = velocity + gravity
+      let newY = playerY + newVelocity
+      
+      const groundY = 340
+      if (newY >= groundY) {
+        newY = groundY
+        newVelocity = 0
+        setIsJumping(false)
+      }
+      
+      setPlayerY(newY)
+      setVelocity(newVelocity)
+
+      // Clear canvas
+      ctx.fillStyle = '#ffdab9'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Draw ground
+      ctx.fillStyle = '#6b8e23'
+      ctx.fillRect(0, 370, canvas.width, 30)
+
+      // Draw cannon
+      ctx.fillStyle = '#2f4f4f'
+      ctx.fillRect(20, 340, 40, 30)
+      ctx.beginPath()
+      ctx.arc(40, 355, 8, 0, Math.PI * 2)
+      ctx.fill()
+      
+      ctx.fillStyle = '#1c1c1c'
+      ctx.fillRect(48, 350, 30, 10)
+
+      // Update and draw cannonballs
+      const newBalls = cannonballs.map(ball => {
+        const newX = ball.x + ball.vx
+        const newY = ball.y + ball.vy
+        const newVy = ball.vy + 0.3 // Gravity
+        
+        // Draw cannonball
+        ctx.fillStyle = '#000'
+        ctx.beginPath()
+        ctx.arc(ball.x, ball.y, 12, 0, Math.PI * 2)
+        ctx.fill()
+        
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.3)'
+        ctx.beginPath()
+        ctx.ellipse(ball.x, 370, 10, 3, 0, 0, Math.PI * 2)
+        ctx.fill()
+        
+        // Check collision with player
+        const playerX = 380
+        const dist = Math.sqrt((ball.x - playerX) ** 2 + (ball.y - newY) ** 2)
+        if (dist < 25) {
+          setHit(true)
+          onInput({ action: 'hit', timestamp: Date.now() })
+        }
+
+        return { ...ball, x: newX, y: newY, vy: newVy }
+      }).filter(ball => ball.x < canvas.width && ball.y < 400)
+
+      setCannonballs(newBalls)
+
+      // Draw player stickman
+      const playerX = 380
+      ctx.fillStyle = '#ff6347'
+      ctx.beginPath()
+      ctx.arc(playerX, newY - 25, 12, 0, Math.PI * 2)
+      ctx.fill()
+      
+      ctx.strokeStyle = '#ff6347'
+      ctx.lineWidth = 4
+      ctx.beginPath()
+      ctx.moveTo(playerX, newY - 13)
+      ctx.lineTo(playerX, newY + 10)
+      ctx.stroke()
+      
+      // Arms
+      ctx.beginPath()
+      ctx.moveTo(playerX - 10, newY - 5)
+      ctx.lineTo(playerX + 10, newY - 5)
+      ctx.stroke()
+      
+      // Legs
+      ctx.beginPath()
+      ctx.moveTo(playerX, newY + 10)
+      ctx.lineTo(playerX - 8, newY + 25)
+      ctx.moveTo(playerX, newY + 10)
+      ctx.lineTo(playerX + 8, newY + 25)
+      ctx.stroke()
+    }
+
+    const animationId = setInterval(animate, 1000 / 60)
+    return () => clearInterval(animationId)
+  }, [playerY, velocity, cannonballs, hit, onInput])
 
   return (
-    <div className="bg-gradient-to-br from-orange-200 to-red-200 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4 text-gray-800">💣 Jump Over Cannonballs! 💣</h3>
-      <p className="text-sm text-gray-700 mb-4">Press SPACEBAR to jump!</p>
+    <div className="bg-gradient-to-br from-orange-200 to-red-200 rounded-lg p-8 text-center">
+      <h3 className="text-xl font-bold mb-2 text-gray-800">💣 Jump Over Cannonballs! 💣</h3>
+      <p className="text-sm text-gray-700 mb-2">Press SPACEBAR to jump!</p>
       
-      <div className="relative h-72 bg-gradient-to-b from-blue-300 to-green-400 rounded-lg overflow-hidden border-4 border-gray-800 mb-6">
-        {/* Ground */}
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-b from-green-600 to-green-800" />
-        
-        {/* Cannon */}
-        <div className="absolute bottom-16 left-8">
-          <div className={`w-16 h-8 bg-gray-700 rounded-r-full transition-transform ${cannonFired ? 'scale-110' : ''}`} />
-          <div className="w-8 h-12 bg-gray-800 ml-2" />
+      <div className="mb-4 flex items-center justify-center gap-4">
+        <div className="bg-white px-4 py-2 rounded-lg shadow">
+          <span className={`font-bold ${hit ? 'text-red-600' : 'text-green-600'}`}>
+            {hit ? '❌ Hit!' : '✅ Dodging'}
+          </span>
         </div>
-        
-        {/* Cannonball */}
-        {cannonFired && (
-          <div 
-            className="absolute bottom-24 left-24 w-8 h-8 bg-gray-900 rounded-full animate-ping"
-            style={{ animation: 'ping 0.8s cubic-bezier(0, 0, 0.2, 1)' }}
-          />
-        )}
-        
-        {/* Player */}
-        <div 
-          className="absolute right-1/4 transition-all duration-600"
-          style={{ 
-            bottom: isJumping ? '140px' : '64px',
-            transform: 'translateX(50%)'
-          }}
-        >
-          <div className="text-5xl">{isJumping ? '🤸' : '🧑'}</div>
+        <div className="bg-white px-4 py-2 rounded-lg shadow">
+          <span className="font-bold text-orange-600">⚡ Jumps: {jumps}</span>
         </div>
       </div>
       
-      <div className="bg-white rounded-full px-8 py-4 inline-block shadow-lg">
-        <div className="text-5xl font-bold text-orange-600">⚡ {jumps}</div>
-        <p className="text-sm text-gray-600 mt-1">Successful Jumps</p>
-      </div>
+      <canvas 
+        ref={canvasRef} 
+        width={500} 
+        height={400}
+        className="border-4 border-gray-800 mx-auto rounded-lg"
+      />
     </div>
   )
 }
