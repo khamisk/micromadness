@@ -196,15 +196,16 @@ datasource db {
 npx prisma migrate deploy
 ```
 
-### WebSocket Configuration for Vercel
+### Railway Advantages
 
-WebSockets work on Vercel but have limitations. For production-grade WebSocket support:
+Railway is the recommended deployment platform because:
+- ✅ **Full WebSocket Support** - Native Socket.IO compatibility
+- ✅ **PostgreSQL Included** - Free managed database
+- ✅ **Automatic Deployments** - GitHub integration
+- ✅ **Low Latency** - Perfect for real-time multiplayer
+- ✅ **Easy Scaling** - Handles concurrent players efficiently
 
-1. **Use Vercel's Edge Runtime** (current implementation)
-2. **Or use external WebSocket server**:
-   - Deploy Socket.IO server separately (e.g., Railway, Fly.io)
-   - Update Socket.IO client to connect to external server
-   - Add server URL to environment variables
+See **`RAILWAY_DEPLOYMENT.md`** for complete deployment guide.
 
 ## Configuration
 
