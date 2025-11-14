@@ -8,29 +8,42 @@ export function useSocket() {
 
   useEffect(() => {
     // Initialize socket connection
-    const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
+    const socketUrl = typeof window !== 'undefined' ? window.location.origin : ''
+    const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(socketUrl, {
       path: '/api/socket',
       addTrailingSlash: false,
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'], // Try polling first
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
+      timeout: 20000,
     })
 
     socket.on('connect', () => {
-      console.log('Socket connected:', socket.id)
+      console.log('✅ Socket connected:', socket.id)
       setIsConnected(true)
     })
 
     socket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason)
+      console.log('❌ Socket disconnected:', reason)
       setIsConnected(false)
     })
 
     socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error)
+      console.error('🔴 Socket connection error:', error.message, error)
+      setIsConnected(false)
     })
+
+    socket.on('reconnect_attempt', (attemptNumber) => {
+      console.log(`🔄 Reconnection attempt #${attemptNumber}`)
+    })
+
+    socket.on('reconnect_failed', () => {
+      console.error('❌ Failed to reconnect after all attempts')
+    })
+
+    console.log('🔌 Attempting to connect to:', socketUrl, 'with path:', '/api/socket')
 
     socketRef.current = socket
 
