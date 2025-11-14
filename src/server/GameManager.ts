@@ -222,10 +222,16 @@ export class GameManager {
     // Broadcast state immediately after game starts
     this.broadcastLobbyState()
     
-    // Broadcast again after a short delay to ensure game page receives it
+    // Broadcast again after delays to ensure game page receives it
     setTimeout(() => {
       this.broadcastLobbyState()
     }, 500)
+    setTimeout(() => {
+      this.broadcastLobbyState()
+    }, 1000)
+    setTimeout(() => {
+      this.broadcastLobbyState()
+    }, 2000)
 
     // Start game loop
     this.runGameLoop()
@@ -235,6 +241,9 @@ export class GameManager {
     if (!this.lobby) return
 
     while (this.getAlivePlayerCount() > 1) {
+      // Broadcast lobby state before each minigame
+      this.broadcastLobbyState()
+      
       // Wait before starting next minigame
       await this.sleep(3000)
 
@@ -245,6 +254,9 @@ export class GameManager {
 
       // Broadcast minigame start
       this.io.to(this.lobby.lobbyCode).emit('minigameStart', minigame)
+      
+      // Broadcast lobby state again with minigame info
+      this.broadcastLobbyState()
 
       // Wait for minigame duration
       await this.sleep(minigame.durationSeconds * 1000)
