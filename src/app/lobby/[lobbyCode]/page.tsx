@@ -12,7 +12,7 @@ export default function LobbyPage() {
   const { player } = usePlayer()
   const { emit, on, off, isConnected } = useSocket()
   
-  const lobbyCode = params.lobbyCode as string
+  const lobbyCode = params?.lobbyCode as string
   const [lobbyState, setLobbyState] = useState<LobbyState | null>(null)
   const [error, setError] = useState('')
 

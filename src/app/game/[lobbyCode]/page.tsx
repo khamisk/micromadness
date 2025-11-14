@@ -14,7 +14,7 @@ export default function GamePage() {
   const { player } = usePlayer()
   const { emit, on, off } = useSocket()
   
-  const lobbyCode = params.lobbyCode as string
+  const lobbyCode = params?.lobbyCode as string
   const [lobbyState, setLobbyState] = useState<LobbyState | null>(null)
   const [currentMinigame, setCurrentMinigame] = useState<MinigameConfig | null>(null)
   const [timeRemaining, setTimeRemaining] = useState(0)
