@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Player {
+  id        String   @id @default(uuid())
+  username  String
+  createdAt DateTime @default(now())
+  stats     PlayerStats?
+}
+
+model PlayerStats {
+  id                     String   @id @default(uuid())
+  playerId               String   @unique
+  player                 Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  totalMinigameWins      Int      @default(0)
+  totalTimePlayedSeconds Int      @default(0)
+  totalLobbyWins         Int      @default(0)
+  updatedAt              DateTime @updatedAt
+}
+
+model Lobby {
+  id            String   @id @default(uuid())
+  lobbyCode     String   @unique
+  name          String
+  hostPlayerId  String
+  createdAt     DateTime @default(now())
+  status        String   @default("waiting") // "waiting", "in-progress", "finished"
+  settings      String   // JSON string: { lives, isPublic }
+  isPublic      Boolean  @default(true)
+  playerCount   Int      @default(0)
+  maxPlayers    Int      @default(16)
+}

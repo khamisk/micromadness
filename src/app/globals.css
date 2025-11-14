@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom game styles */
+.heart {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.heart.lost {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+  opacity: 0.3;
+}
+
+.player-eliminated {
+  opacity: 0.5;
+  filter: grayscale(100%);
+}
+
+.game-card {
+  @apply bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6;
+}
+
+.btn-primary {
+  @apply bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-danger {
+  @apply bg-danger hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition-colors;
+}
+
+.input-field {
+  @apply border border-gray-300 dark:border-gray-600 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white;
+}
