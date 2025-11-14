@@ -54,9 +54,8 @@ export class MinigameOrchestrator {
       this.recentMinigames.shift()
     }
 
-    // Determine duration
-    const [min, max] = getDurationRange(settings.minigameDuration)
-    const duration = getRandomInRange(min, max)
+    // Determine duration (fixed range: 10-12 seconds)
+    const duration = getRandomInRange(10, 12)
 
     // Instantiate minigame
     this.currentMinigame = new MinigameClass(duration, alivePlayers)
