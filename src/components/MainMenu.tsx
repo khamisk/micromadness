@@ -259,6 +259,13 @@ export default function MainMenu() {
               >
                 ❓ How to Play
               </button>
+              <button
+                onClick={() => router.push('/admin')}
+                className="btn-secondary text-xs"
+                title="Admin Panel"
+              >
+                🔧
+              </button>
             </div>
           </div>
         </div>

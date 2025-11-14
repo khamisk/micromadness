@@ -96,7 +96,7 @@ export class GameManager {
       // Reconnect
       const player = this.players.get(playerId)!
       player.isConnected = true
-      this.broadcastLobbyState()
+      this.broadcastLobbyState(socketId)
       return { success: true }
     }
 
@@ -119,7 +119,7 @@ export class GameManager {
     // Broadcast to all players
     this.io.to(lobbyCode).emit('playerJoined', newPlayer)
     await this.updateLobbyPlayerCount()
-    this.broadcastLobbyState()
+    this.broadcastLobbyState(socketId)
 
     return { success: true }
   }
@@ -326,7 +326,7 @@ export class GameManager {
     return Array.from(this.players.values())
   }
 
-  private broadcastLobbyState() {
+  private broadcastLobbyState(includeSocketId?: string) {
     if (!this.lobby) return
 
     const state: LobbyState = {
@@ -339,7 +339,13 @@ export class GameManager {
         : undefined,
     }
 
+    // Emit to room
     this.io.to(this.lobby.lobbyCode).emit('lobbyState', state)
+    
+    // Also emit directly to the socket that just joined (if provided)
+    if (includeSocketId) {
+      this.io.to(includeSocketId).emit('lobbyState', state)
+    }
   }
 
   private async updateLobbyPlayerCount() {
