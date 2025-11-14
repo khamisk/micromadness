@@ -10,7 +10,7 @@ class SoundManager {
   }
 
   // Play a simple beep sound
-  private playTone(frequency: number, duration: number, volume: number = 0.3) {
+  private playTone(frequency: number, duration: number, volume: number = 0.05) {
     this.initAudio()
     if (!this.audioContext) return
 
@@ -34,7 +34,7 @@ class SoundManager {
   }
 
   // Play multi-tone sequence
-  private playSequence(notes: Array<{ freq: number; duration: number; delay: number }>, volume: number = 0.3) {
+  private playSequence(notes: Array<{ freq: number; duration: number; delay: number }>, volume: number = 0.05) {
     notes.forEach((note) => {
       setTimeout(() => {
         this.playTone(note.freq, note.duration, volume)
@@ -48,7 +48,7 @@ class SoundManager {
       { freq: 523.25, duration: 0.1, delay: 0 },     // C5
       { freq: 659.25, duration: 0.1, delay: 100 },   // E5
       { freq: 783.99, duration: 0.15, delay: 200 },  // G5
-    ], 0.2)
+    ], 0.03)
   }
 
   // Lobby leave sound - descending notes
@@ -56,12 +56,12 @@ class SoundManager {
     this.playSequence([
       { freq: 783.99, duration: 0.1, delay: 0 },     // G5
       { freq: 659.25, duration: 0.15, delay: 100 },  // E5
-    ], 0.2)
+    ], 0.03)
   }
 
   // Ready up sound - quick blip
   playReady() {
-    this.playTone(880, 0.08, 0.15) // A5
+    this.playTone(880, 0.08, 0.025) // A5
   }
 
   // Game start countdown
@@ -71,7 +71,7 @@ class SoundManager {
       { freq: 440, duration: 0.15, delay: 300 },  // A4
       { freq: 440, duration: 0.15, delay: 600 },  // A4
       { freq: 880, duration: 0.3, delay: 900 },   // A5 - GO!
-    ], 0.25)
+    ], 0.04)
   }
 
   // Minigame start
@@ -80,7 +80,7 @@ class SoundManager {
       { freq: 523.25, duration: 0.1, delay: 0 },    // C5
       { freq: 659.25, duration: 0.1, delay: 80 },   // E5
       { freq: 783.99, duration: 0.2, delay: 160 },  // G5
-    ], 0.2)
+    ], 0.04)
   }
 
   // Win sound
@@ -90,7 +90,7 @@ class SoundManager {
       { freq: 659.25, duration: 0.1, delay: 100 },  // E5
       { freq: 783.99, duration: 0.1, delay: 200 },  // G5
       { freq: 1046.5, duration: 0.3, delay: 300 },  // C6
-    ], 0.25)
+    ], 0.04)
   }
 
   // Lose sound
@@ -98,17 +98,17 @@ class SoundManager {
     this.playSequence([
       { freq: 392, duration: 0.2, delay: 0 },       // G4
       { freq: 329.63, duration: 0.3, delay: 200 },  // E4
-    ], 0.2)
+    ], 0.03)
   }
 
   // Error/buzzer sound
   playError() {
-    this.playTone(150, 0.3, 0.15)
+    this.playTone(150, 0.3, 0.025)
   }
 
   // Success/click sound
   playClick() {
-    this.playTone(800, 0.05, 0.1)
+    this.playTone(800, 0.05, 0.02)
   }
 }
 

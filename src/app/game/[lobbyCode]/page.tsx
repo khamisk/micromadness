@@ -22,6 +22,27 @@ export default function GamePage() {
   const [showResults, setShowResults] = useState(false)
   const [lastOutcome, setLastOutcome] = useState<MinigameOutcome | null>(null)
   const [gameStartTime] = useState(Date.now())
+  const [hasRejoined, setHasRejoined] = useState(false)
+
+  // Rejoin lobby when socket connects (for game page)
+  useEffect(() => {
+    if (!player || !lobbyCode || hasRejoined) return
+
+    console.log('🎮 Game page attempting to rejoin lobby:', lobbyCode)
+    
+    emit('joinLobby', {
+      lobbyCode,
+      playerId: player.playerId,
+      username: player.username,
+    }, (response: { success: boolean; error?: string }) => {
+      if (response.success) {
+        console.log('✅ Successfully rejoined lobby for game')
+        setHasRejoined(true)
+      } else {
+        console.error('❌ Failed to rejoin lobby:', response.error)
+      }
+    })
+  }, [player, lobbyCode, emit, hasRejoined])
 
   useEffect(() => {
     if (!player) return
