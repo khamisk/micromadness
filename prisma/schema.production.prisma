@@ -26,7 +26,7 @@ model PlayerStats {
   totalTimePlayedSeconds Int      @default(0)
   totalLobbyWins         Int      @default(0)
   createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  updatedAt              DateTime @default(now()) @updatedAt
   
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
 }
