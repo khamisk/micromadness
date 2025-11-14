@@ -88,6 +88,15 @@ function PerfectStopwatchGame({ minigame, onInput }: { minigame: MinigameConfig;
   const targetSeconds = minigame.config?.targetSeconds || 7
   const [startTime] = useState(Date.now())
   const [clicked, setClicked] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    if (clicked) return
+    const interval = setInterval(() => {
+      setElapsed((Date.now() - startTime) / 1000)
+    }, 50)
+    return () => clearInterval(interval)
+  }, [clicked, startTime])
 
   const handleClick = () => {
     if (clicked) return
@@ -96,20 +105,41 @@ function PerfectStopwatchGame({ minigame, onInput }: { minigame: MinigameConfig;
     onInput({ clickTime })
   }
 
+  const progress = Math.min((elapsed / targetSeconds) * 100, 100)
+
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <h3 className="text-2xl font-bold mb-8">
+    <div className="bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg p-12 text-center">
+      <h3 className="text-2xl font-bold mb-8 text-gray-800">
         Click at exactly {targetSeconds}.00 seconds!
       </h3>
-      <button
-        onClick={handleClick}
-        disabled={clicked}
-        className="bg-primary hover:bg-primary-dark text-white font-bold py-8 px-16 rounded-full text-3xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {clicked ? 'Clicked!' : 'CLICK'}
-      </button>
-      <p className="mt-6 text-gray-600 text-sm">
-        No timer shown - you must feel the time!
+      
+      {/* Visual timer ring */}
+      <div className="relative inline-block mb-8">
+        <svg width="280" height="280" className="transform -rotate-90">
+          <circle cx="140" cy="140" r="120" fill="none" stroke="#e5e7eb" strokeWidth="16" />
+          <circle 
+            cx="140" 
+            cy="140" 
+            r="120" 
+            fill="none" 
+            stroke={clicked ? '#10b981' : '#6366f1'}
+            strokeWidth="16"
+            strokeDasharray={`${2 * Math.PI * 120}`}
+            strokeDashoffset={`${2 * Math.PI * 120 * (1 - progress / 100)}`}
+            className="transition-all duration-50"
+          />
+        </svg>
+        <button
+          onClick={handleClick}
+          disabled={clicked}
+          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-8 px-16 rounded-full text-3xl transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl"
+        >
+          {clicked ? '✓' : 'CLICK'}
+        </button>
+      </div>
+      
+      <p className="text-gray-600 text-sm">
+        🤫 No timer shown - trust your instinct!
       </p>
     </div>
   )
@@ -121,6 +151,7 @@ function AdaptiveMashGame({ minigame, onInput }: { minigame: MinigameConfig; onI
   const segmentDuration = minigame.config?.segmentDuration || 2000
   const [currentSegment, setCurrentSegment] = useState(0)
   const [score, setScore] = useState(0)
+  const [flash, setFlash] = useState(false)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -136,6 +167,8 @@ function AdaptiveMashGame({ minigame, onInput }: { minigame: MinigameConfig; onI
         const expectedKey = keySequence[currentSegment]
         if (e.key.toUpperCase() === expectedKey) {
           setScore(prev => prev + 1)
+          setFlash(true)
+          setTimeout(() => setFlash(false), 100)
           onInput({ key: e.key, timestamp: Date.now(), segmentIndex: currentSegment })
         }
       }
@@ -148,15 +181,24 @@ function AdaptiveMashGame({ minigame, onInput }: { minigame: MinigameConfig; onI
   const currentKey = keySequence[currentSegment] || '?'
 
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <div className="mb-8">
-        <div className="text-sm text-gray-600 mb-2">Press:</div>
-        <div className="text-9xl font-bold text-primary animate-pulse">
-          {currentKey}
+    <div className="bg-gradient-to-br from-yellow-100 to-orange-100 rounded-lg p-12 text-center">
+      <h3 className="text-xl font-bold mb-4 text-gray-800">Mash the keys as fast as you can!</h3>
+      <div className="mb-8 relative">
+        <div className={`inline-block px-20 py-16 rounded-3xl shadow-2xl transition-all duration-100 ${
+          flash ? 'bg-gradient-to-br from-green-400 to-green-600 scale-110' : 'bg-gradient-to-br from-orange-500 to-red-600'
+        }`}>
+          <div className="text-9xl font-black text-white drop-shadow-lg animate-pulse">
+            {currentKey}
+          </div>
         </div>
       </div>
-      <div className="text-2xl font-bold text-gray-700">
-        Score: {score}
+      <div className="flex items-center justify-center gap-4">
+        <div className="text-3xl font-bold text-gray-700 bg-white px-8 py-3 rounded-full shadow-lg">
+          ⚡ Score: <span className="text-orange-600">{score}</span>
+        </div>
+        <div className="text-sm text-gray-600">
+          Segment {currentSegment + 1}/{keySequence.length}
+        </div>
       </div>
     </div>
   )
@@ -211,11 +253,14 @@ function SpeedTypistGame({ minigame, onInput }: { minigame: MinigameConfig; onIn
 // Team Tug of War - Spam spacebar
 function TeamTugOfWarGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
   const [presses, setPresses] = useState(0)
+  const [pulse, setPulse] = useState(false)
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !e.repeat) {
         setPresses(prev => prev + 1)
+        setPulse(true)
+        setTimeout(() => setPulse(false), 100)
         onInput({ action: 'press', timestamp: Date.now() })
       }
     }
@@ -224,11 +269,30 @@ function TeamTugOfWarGame({ minigame, onInput }: { minigame: MinigameConfig; onI
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [onInput])
 
+  const ropePosition = Math.min(Math.max(presses % 100, 0), 100)
+
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <h3 className="text-2xl font-bold mb-8">Spam SPACEBAR!</h3>
-      <div className="text-9xl font-bold text-primary mb-4">{presses}</div>
-      <p className="text-gray-600">Presses</p>
+    <div className="bg-gradient-to-br from-blue-100 to-green-100 rounded-lg p-12 text-center">
+      <h3 className="text-2xl font-bold mb-8 text-gray-800">⚔️ TUG OF WAR! ⚔️</h3>
+      
+      {/* Rope visualization */}
+      <div className="relative h-32 bg-gradient-to-r from-red-300 via-gray-300 to-blue-300 rounded-lg mb-8 overflow-hidden">
+        <div className="absolute inset-0 flex items-center justify-between px-4 text-4xl">
+          <span>🔴</span>
+          <span>🔵</span>
+        </div>
+        <div 
+          className={`absolute top-1/2 transform -translate-y-1/2 w-16 h-16 bg-yellow-400 rounded-full border-4 border-yellow-600 flex items-center justify-center text-2xl transition-all duration-100 ${pulse ? 'scale-125' : ''}`}
+          style={{ left: `calc(${ropePosition}% - 32px)` }}
+        >
+          🏴
+        </div>
+      </div>
+      
+      <div className="bg-white rounded-full px-8 py-6 inline-block shadow-lg mb-4">
+        <div className="text-7xl font-black text-blue-600">{presses}</div>
+      </div>
+      <p className="text-gray-700 font-bold text-xl">⌨️ Press SPACEBAR!</p>
     </div>
   )
 }
@@ -367,33 +431,45 @@ function PrecisionMazeGame({ minigame, onInput }: { minigame: MinigameConfig; on
 // Stickman Dodgefall - Dodge falling objects
 function StickmanDodgefallGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
   const [playerX, setPlayerX] = useState(250)
-  const [dodges, setDodges] = useState(0)
+  const [survived, setSurvived] = useState(true)
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
-        setPlayerX(prev => Math.max(50, prev - 30))
-        onInput({ action: 'move', direction: 'left', timestamp: Date.now() })
+        setPlayerX(prev => Math.max(60, prev - 40))
+        onInput({ action: 'move', direction: 'left', x: Math.max(60, playerX - 40), timestamp: Date.now() })
       } else if (e.key === 'ArrowRight') {
-        setPlayerX(prev => Math.min(450, prev + 30))
-        onInput({ action: 'move', direction: 'right', timestamp: Date.now() })
+        setPlayerX(prev => Math.min(440, prev + 40))
+        onInput({ action: 'move', direction: 'right', x: Math.min(440, playerX + 40), timestamp: Date.now() })
       }
     }
 
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [onInput])
+  }, [onInput, playerX])
 
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4">Dodge falling objects! (Arrow keys)</h3>
-      <div className="relative w-full h-96 bg-gray-200 rounded">
+    <div className="bg-gradient-to-br from-sky-200 to-sky-400 rounded-lg p-12 text-center">
+      <h3 className="text-xl font-bold mb-4 text-gray-800">⚡ Dodge Falling Objects! ⚡</h3>
+      <p className="text-sm text-gray-700 mb-4">Use ← → Arrow Keys</p>
+      
+      <div className="relative w-full h-96 bg-gradient-to-b from-sky-300 to-green-300 rounded-lg overflow-hidden border-4 border-gray-700">
+        {/* Ground */}
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-b from-green-700 to-green-900" />
+        
+        {/* Player stickman */}
         <div 
-          className="absolute bottom-4 w-12 h-16 bg-blue-500 rounded transition-all"
+          className="absolute bottom-20 transition-all duration-100"
           style={{ left: `${playerX}px`, transform: 'translateX(-50%)' }}
-        />
+        >
+          <div className="text-5xl">{survived ? '🏃' : '💥'}</div>
+        </div>
+        
+        {/* Visual indicators */}
+        <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white px-4 py-2 rounded">
+          {survived ? '✅ Alive' : '❌ Hit!'}
+        </div>
       </div>
-      <p className="mt-4 text-gray-700">Dodges: {dodges}</p>
     </div>
   )
 }
@@ -401,24 +477,51 @@ function StickmanDodgefallGame({ minigame, onInput }: { minigame: MinigameConfig
 // Stickman Parkour - Jump platforms
 function StickmanParkourGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
   const [jumps, setJumps] = useState(0)
+  const [isJumping, setIsJumping] = useState(false)
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !e.repeat) {
+      if (e.code === 'Space' && !e.repeat && !isJumping) {
+        setIsJumping(true)
         setJumps(prev => prev + 1)
         onInput({ action: 'jump', timestamp: Date.now() })
+        setTimeout(() => setIsJumping(false), 400)
       }
     }
 
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [onInput])
+  }, [onInput, isJumping])
 
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4">Jump platforms! (Spacebar)</h3>
-      <div className="text-6xl font-bold text-primary mb-4">{jumps}</div>
-      <p className="text-gray-600">Successful Jumps</p>
+    <div className="bg-gradient-to-br from-purple-200 to-pink-200 rounded-lg p-12 text-center">
+      <h3 className="text-xl font-bold mb-4 text-gray-800">🎯 Parkour Challenge!</h3>
+      <p className="text-sm text-gray-700 mb-4">Press SPACEBAR to jump over obstacles</p>
+      
+      <div className="relative h-64 bg-gradient-to-b from-blue-200 to-blue-400 rounded-lg overflow-hidden border-4 border-gray-800 mb-6">
+        {/* Platforms */}
+        <div className="absolute bottom-0 left-0 w-1/3 h-16 bg-gradient-to-b from-gray-600 to-gray-800" />
+        <div className="absolute bottom-0 right-0 w-1/3 h-16 bg-gradient-to-b from-gray-600 to-gray-800" />
+        
+        {/* Jumping stickman */}
+        <div 
+          className="absolute left-1/4 transition-all duration-400"
+          style={{ 
+            bottom: isJumping ? '120px' : '64px',
+            transform: 'translateX(-50%)'
+          }}
+        >
+          <div className="text-5xl">🤸</div>
+        </div>
+        
+        {/* Obstacles */}
+        <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-red-600 rounded" />
+      </div>
+      
+      <div className="bg-white rounded-full px-8 py-4 inline-block shadow-lg">
+        <div className="text-5xl font-bold text-purple-600">🏆 {jumps}</div>
+        <p className="text-sm text-gray-600 mt-1">Jumps</p>
+      </div>
     </div>
   )
 }
@@ -427,15 +530,19 @@ function StickmanParkourGame({ minigame, onInput }: { minigame: MinigameConfig; 
 function StayInCircleGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [inCircle, setInCircle] = useState(true)
-  const [radius, setRadius] = useState(150)
+  const [radius, setRadius] = useState(200)
+  const [timeInside, setTimeInside] = useState(0)
 
   useEffect(() => {
     const shrink = setInterval(() => {
-      setRadius(prev => Math.max(30, prev - 2))
+      setRadius(prev => Math.max(30, prev - 1))
+      if (inCircle) {
+        setTimeInside(prev => prev + 100)
+      }
     }, 100)
 
     return () => clearInterval(shrink)
-  }, [])
+  }, [inCircle])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -449,17 +556,33 @@ function StayInCircleGame({ minigame, onInput }: { minigame: MinigameConfig; onI
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.fillStyle = '#f0f0f0'
+      
+      // Dark background
+      ctx.fillStyle = '#1a1a2e'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       
-      ctx.fillStyle = inCircle ? '#00ff0033' : '#ff000033'
+      // Outer glow
+      const gradient = ctx.createRadialGradient(centerX, centerY, radius - 20, centerX, centerY, radius + 30)
+      gradient.addColorStop(0, inCircle ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)')
+      gradient.addColorStop(1, 'transparent')
+      ctx.fillStyle = gradient
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      // Circle
+      ctx.fillStyle = inCircle ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'
       ctx.beginPath()
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2)
       ctx.fill()
       
-      ctx.strokeStyle = '#333'
-      ctx.lineWidth = 3
+      ctx.strokeStyle = inCircle ? '#22c55e' : '#ef4444'
+      ctx.lineWidth = 4
       ctx.stroke()
+      
+      // Center text
+      ctx.fillStyle = '#fff'
+      ctx.font = 'bold 24px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(Math.round(radius).toString(), centerX, centerY)
     }
 
     const handleMove = (e: MouseEvent) => {
@@ -473,7 +596,7 @@ function StayInCircleGame({ minigame, onInput }: { minigame: MinigameConfig; onI
       if (inside !== inCircle) {
         setInCircle(inside)
         if (!inside) {
-          onInput({ action: 'left_circle', timestamp: Date.now() })
+          onInput({ action: 'left_circle', timeInside, timestamp: Date.now() })
         }
       }
     }
@@ -485,15 +608,20 @@ function StayInCircleGame({ minigame, onInput }: { minigame: MinigameConfig; onI
       clearInterval(interval)
       canvas.removeEventListener('mousemove', handleMove)
     }
-  }, [radius, inCircle, onInput])
+  }, [radius, inCircle, onInput, timeInside])
 
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-8 text-center">
-      <h3 className="text-xl font-bold mb-4">Keep your cursor in the circle!</h3>
-      <canvas ref={canvasRef} width={500} height={500} className="border-4 border-gray-800 mx-auto" />
-      <p className={`mt-4 font-bold ${inCircle ? 'text-green-600' : 'text-red-600'}`}>
-        {inCircle ? 'Inside!' : 'Outside!'}
-      </p>
+    <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-8 text-center">
+      <h3 className="text-xl font-bold mb-4 text-white">🎯 Stay Inside the Shrinking Circle!</h3>
+      <canvas ref={canvasRef} width={500} height={500} className="border-4 border-gray-600 mx-auto rounded-lg cursor-none" />
+      <div className="mt-4 flex items-center justify-center gap-6">
+        <p className={`font-bold text-2xl ${inCircle ? 'text-green-400' : 'text-red-400'}`}>
+          {inCircle ? '✅ Inside' : '❌ Outside'}
+        </p>
+        <p className="text-gray-300">
+          Time: {(timeInside / 1000).toFixed(1)}s
+        </p>
+      </div>
     </div>
   )
 }
@@ -503,10 +631,19 @@ function MemoryGridGame({ minigame, onInput }: { minigame: MinigameConfig; onInp
   const pattern = minigame.config?.pattern || [0, 4, 8, 12]
   const [showPattern, setShowPattern] = useState(true)
   const [selected, setSelected] = useState<number[]>([])
+  const [countdown, setCountdown] = useState(3)
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowPattern(false), 3000)
-    return () => clearTimeout(timer)
+    const interval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          setShowPattern(false)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(interval)
   }, [])
 
   const handleClick = (index: number) => {
@@ -518,27 +655,39 @@ function MemoryGridGame({ minigame, onInput }: { minigame: MinigameConfig; onInp
     onInput({ selected: newSelected, timestamp: Date.now() })
   }
 
+  const isCorrect = (index: number) => {
+    const position = selected.indexOf(index)
+    return position >= 0 && pattern[position] === index
+  }
+
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4">
-        {showPattern ? 'Memorize the pattern!' : 'Click the pattern!'}
+    <div className="bg-gradient-to-br from-indigo-200 to-purple-200 rounded-lg p-12 text-center">
+      <h3 className="text-xl font-bold mb-4 text-gray-800">
+        {showPattern ? `🧠 Memorize! (${countdown}s)` : '👆 Click the Pattern!'}
       </h3>
-      <div className="grid grid-cols-4 gap-4 max-w-md mx-auto">
-        {Array.from({ length: 16 }).map((_, i) => (
+      <div className="grid grid-cols-5 gap-3 max-w-lg mx-auto mb-4">
+        {Array.from({ length: 25 }).map((_, i) => (
           <button
             key={i}
             onClick={() => handleClick(i)}
-            className={`w-20 h-20 rounded transition-all ${
+            className={`w-20 h-20 rounded-lg transition-all duration-200 text-2xl font-bold shadow-lg ${
               showPattern && pattern.includes(i)
-                ? 'bg-yellow-400'
+                ? 'bg-gradient-to-br from-yellow-300 to-yellow-500 animate-pulse scale-110'
                 : selected.includes(i)
-                ? 'bg-blue-400'
-                : 'bg-gray-300 hover:bg-gray-400'
+                ? isCorrect(i) 
+                  ? 'bg-gradient-to-br from-green-400 to-green-600 text-white'
+                  : 'bg-gradient-to-br from-red-400 to-red-600 text-white'
+                : 'bg-gradient-to-br from-gray-300 to-gray-400 hover:from-gray-400 hover:to-gray-500 hover:scale-105'
             }`}
             disabled={showPattern}
-          />
+          >
+            {selected.includes(i) && (isCorrect(i) ? '✓' : '✗')}
+          </button>
         ))}
       </div>
+      <p className="text-sm text-gray-700">
+        Selected: {selected.length}/{pattern.length}
+      </p>
     </div>
   )
 }
@@ -546,30 +695,45 @@ function MemoryGridGame({ minigame, onInput }: { minigame: MinigameConfig; onInp
 // Territory Grab - Click tiles to claim
 function TerritoryGrabGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
   const [claimed, setClaimed] = useState<Set<number>>(new Set())
+  const [lastClaimed, setLastClaimed] = useState<number | null>(null)
 
   const handleClick = (index: number) => {
-    if (claimed.has(index)) return
-    
     const newClaimed = new Set(claimed)
     newClaimed.add(index)
     setClaimed(newClaimed)
+    setLastClaimed(index)
     
     onInput({ claimed: index, total: newClaimed.size, timestamp: Date.now() })
   }
 
+  const colors = [
+    'from-red-400 to-red-600',
+    'from-blue-400 to-blue-600',
+    'from-green-400 to-green-600',
+    'from-yellow-400 to-yellow-600',
+    'from-purple-400 to-purple-600',
+  ]
+
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4">Claim tiles by clicking! ({claimed.size}/25)</h3>
-      <div className="grid grid-cols-5 gap-2 max-w-md mx-auto">
-        {Array.from({ length: 25 }).map((_, i) => (
+    <div className="bg-gradient-to-br from-green-100 to-teal-100 rounded-lg p-12 text-center">
+      <h3 className="text-xl font-bold mb-4 text-gray-800">📍 Claim Territory!</h3>
+      <p className="text-sm text-gray-600 mb-4">Last click wins the tile!</p>
+      <div className="grid grid-cols-10 gap-1 max-w-2xl mx-auto mb-4 bg-gray-800 p-2 rounded-lg">
+        {Array.from({ length: 100 }).map((_, i) => (
           <button
             key={i}
             onClick={() => handleClick(i)}
-            className={`w-16 h-16 rounded transition-all ${
-              claimed.has(i) ? 'bg-green-500' : 'bg-gray-300 hover:bg-gray-400'
+            className={`w-12 h-12 rounded transition-all duration-200 ${
+              claimed.has(i) 
+                ? `bg-gradient-to-br ${colors[i % colors.length]} shadow-lg ${lastClaimed === i ? 'scale-110 ring-4 ring-white' : ''}`
+                : 'bg-gray-600 hover:bg-gray-500 hover:scale-105'
             }`}
           />
         ))}
+      </div>
+      <div className="bg-white rounded-full px-8 py-3 inline-block shadow-lg">
+        <span className="text-3xl font-bold text-teal-600">{claimed.size}</span>
+        <span className="text-gray-600 ml-2">/ 100 tiles</span>
       </div>
     </div>
   )
@@ -582,31 +746,41 @@ function AverageBaitGame({ minigame, onInput }: { minigame: MinigameConfig; onIn
 
   const handleSubmit = () => {
     if (submitted || !value) return
+    const numValue = parseFloat(value)
+    if (numValue < 0 || numValue > 100) return
     setSubmitted(true)
-    onInput({ value: parseFloat(value), timestamp: Date.now() })
+    onInput({ value: numValue, timestamp: Date.now() })
   }
 
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4">Enter a number 0-100</h3>
-      <p className="text-gray-600 mb-6">Closest to 2/3 of the average wins!</p>
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        disabled={submitted}
-        className="input-field text-3xl text-center w-48 mb-4"
-        placeholder="0-100"
-        min="0"
-        max="100"
-      />
-      <br />
+    <div className="bg-gradient-to-br from-cyan-100 to-blue-200 rounded-lg p-12 text-center">
+      <h3 className="text-2xl font-bold mb-4 text-gray-800">🧠 Average Bait</h3>
+      <div className="bg-white rounded-lg p-6 mb-6 shadow-lg max-w-md mx-auto">
+        <p className="text-gray-700 mb-2">Choose a number between <span className="font-bold">0-100</span></p>
+        <p className="text-sm text-gray-600">The player furthest from the average loses!</p>
+      </div>
+      
+      <div className="mb-6">
+        <input
+          type="number"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
+          disabled={submitted}
+          className="text-6xl font-bold text-center w-64 px-6 py-4 border-4 border-blue-500 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:bg-gray-200"
+          placeholder="?"
+          min="0"
+          max="100"
+          autoFocus
+        />
+      </div>
+      
       <button
         onClick={handleSubmit}
         disabled={submitted || !value}
-        className="btn btn-primary text-xl px-8 py-3"
+        className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-bold text-2xl px-16 py-6 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105 shadow-xl"
       >
-        {submitted ? 'Submitted!' : 'Submit'}
+        {submitted ? '✓ Submitted!' : '🚀 Submit'}
       </button>
     </div>
   )
@@ -615,87 +789,184 @@ function AverageBaitGame({ minigame, onInput }: { minigame: MinigameConfig; onIn
 // Vote To Kill - Vote for a player
 function VoteToKillGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
   const players = minigame.config?.players || ['Player 1', 'Player 2', 'Player 3']
-  const [voted, setVoted] = useState(false)
+  const [voted, setVoted] = useState<string | null>(null)
+  const [hoveredPlayer, setHoveredPlayer] = useState<string | null>(null)
 
   const handleVote = (playerName: string) => {
     if (voted) return
-    setVoted(true)
+    setVoted(playerName)
     onInput({ vote: playerName, timestamp: Date.now() })
   }
 
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4">Vote to eliminate a player!</h3>
-      <div className="space-y-3">
+    <div className="bg-gradient-to-br from-red-200 to-pink-200 rounded-lg p-12 text-center">
+      <h3 className="text-2xl font-bold mb-2 text-gray-800">☠️ Vote to Eliminate! ☠️</h3>
+      <p className="text-sm text-gray-600 mb-6">Choose wisely... someone must go</p>
+      
+      <div className="grid gap-4 max-w-lg mx-auto">
         {players.map((playerName: string, i: number) => (
           <button
             key={i}
             onClick={() => handleVote(playerName)}
-            disabled={voted}
-            className="btn btn-primary w-64 text-lg"
+            onMouseEnter={() => setHoveredPlayer(playerName)}
+            onMouseLeave={() => setHoveredPlayer(null)}
+            disabled={!!voted}
+            className={`relative px-8 py-6 rounded-xl font-bold text-xl transition-all duration-200 ${
+              voted === playerName
+                ? 'bg-gradient-to-r from-red-600 to-red-800 text-white scale-105 shadow-2xl'
+                : voted
+                ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                : hoveredPlayer === playerName
+                ? 'bg-gradient-to-r from-orange-400 to-red-500 text-white scale-105 shadow-xl'
+                : 'bg-gradient-to-r from-gray-200 to-gray-300 text-gray-800 hover:shadow-lg'
+            }`}
           >
+            <span className="text-3xl mr-3">{voted === playerName ? '☠️' : '👤'}</span>
             {playerName}
+            {voted === playerName && <span className="ml-3">✓</span>}
           </button>
         ))}
       </div>
-      {voted && <p className="text-green-600 font-bold mt-4">Vote submitted!</p>}
+      
+      {voted && (
+        <p className="text-red-700 font-bold mt-6 text-lg animate-pulse">
+          ✓ Vote cast for {voted}!
+        </p>
+      )}
     </div>
   )
 }
 
 // Bullet Hell - Avoid projectiles
 function BulletHellGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
-  const [playerPos, setPlayerPos] = useState({ x: 250, y: 400 })
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [survived, setSurvived] = useState(true)
+  const [mousePos, setMousePos] = useState({ x: 250, y: 250 })
 
   useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
     const handleMove = (e: MouseEvent) => {
-      setPlayerPos({ x: e.clientX, y: e.clientY })
-      onInput({ position: { x: e.clientX, y: e.clientY }, timestamp: Date.now() })
+      const rect = canvas.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      setMousePos({ x, y })
+      onInput({ position: { x, y }, timestamp: Date.now() })
     }
 
-    window.addEventListener('mousemove', handleMove)
-    return () => window.removeEventListener('mousemove', handleMove)
-  }, [onInput])
+    const draw = () => {
+      ctx.fillStyle = '#0a0a0a'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Draw grid
+      ctx.strokeStyle = '#222'
+      ctx.lineWidth = 1
+      for (let i = 0; i < canvas.width; i += 50) {
+        ctx.beginPath()
+        ctx.moveTo(i, 0)
+        ctx.lineTo(i, canvas.height)
+        ctx.stroke()
+      }
+      for (let i = 0; i < canvas.height; i += 50) {
+        ctx.beginPath()
+        ctx.moveTo(0, i)
+        ctx.lineTo(canvas.width, i)
+        ctx.stroke()
+      }
+
+      // Draw player
+      ctx.fillStyle = survived ? '#3b82f6' : '#ef4444'
+      ctx.shadowBlur = 20
+      ctx.shadowColor = survived ? '#3b82f6' : '#ef4444'
+      ctx.beginPath()
+      ctx.arc(mousePos.x, mousePos.y, 8, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.shadowBlur = 0
+    }
+
+    canvas.addEventListener('mousemove', handleMove)
+    const interval = setInterval(draw, 16)
+
+    return () => {
+      canvas.removeEventListener('mousemove', handleMove)
+      clearInterval(interval)
+    }
+  }, [mousePos, survived, onInput])
 
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4">Dodge the bullets!</h3>
-      <div className="relative w-full h-96 bg-gray-900 rounded overflow-hidden">
-        <div 
-          className="absolute w-6 h-6 bg-blue-500 rounded-full"
-          style={{ left: `${playerPos.x}px`, top: `${playerPos.y}px`, transform: 'translate(-50%, -50%)' }}
-        />
-      </div>
-      <p className={`mt-4 font-bold ${survived ? 'text-green-600' : 'text-red-600'}`}>
-        {survived ? 'Surviving!' : 'Hit!'}
+    <div className="bg-gradient-to-br from-gray-900 to-black rounded-lg p-12 text-center">
+      <h3 className="text-xl font-bold mb-4 text-white">🔫 Bullet Hell! 🔫</h3>
+      <canvas 
+        ref={canvasRef} 
+        width={500} 
+        height={500} 
+        className="border-4 border-red-600 mx-auto rounded cursor-none"
+      />
+      <p className={`mt-4 font-bold text-2xl ${survived ? 'text-green-400' : 'text-red-400'}`}>
+        {survived ? '✅ Surviving!' : '❌ Hit!'}
       </p>
     </div>
   )
 }
 
-// Reverse APM - Click slowly
+// Reverse APM - Click buttons in descending order
 function ReverseAPMGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
-  const [clicks, setClicks] = useState(0)
-  const [lastClick, setLastClick] = useState(0)
+  const [currentNumber, setCurrentNumber] = useState(20)
+  const [completed, setCompleted] = useState(false)
+  const [failed, setFailed] = useState(false)
 
-  const handleClick = () => {
-    const now = Date.now()
-    setClicks(prev => prev + 1)
-    setLastClick(now)
-    onInput({ clicks: clicks + 1, timestamp: now })
+  const handleClick = (num: number) => {
+    if (completed || failed) return
+    
+    if (num === currentNumber) {
+      onInput({ clickedNumber: num, correct: true, timestamp: Date.now() })
+      if (num === 0) {
+        setCompleted(true)
+      } else {
+        setCurrentNumber(prev => prev - 1)
+      }
+    } else {
+      setFailed(true)
+      onInput({ clickedNumber: num, correct: false, timestamp: Date.now() })
+    }
   }
 
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4">Click SLOWLY!</h3>
-      <p className="text-gray-600 mb-6">Fewer clicks = better score</p>
-      <button
-        onClick={handleClick}
-        className="btn btn-primary text-3xl px-16 py-8"
-      >
-        Click ({clicks})
-      </button>
+    <div className="bg-gradient-to-br from-red-100 to-orange-100 rounded-lg p-12 text-center">
+      <h3 className="text-xl font-bold mb-4 text-gray-800">🔢 Click in Order: 20 → 0</h3>
+      <p className="text-sm text-gray-600 mb-4">Click the buttons in descending order!</p>
+      
+      <div className="mb-6">
+        <div className="text-6xl font-bold text-orange-600 mb-2">
+          {completed ? '✓' : failed ? '✗' : currentNumber}
+        </div>
+        <p className="text-sm text-gray-600">
+          {completed ? 'Complete!' : failed ? 'Wrong order!' : 'Next number to click'}
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-7 gap-2 max-w-2xl mx-auto">
+        {Array.from({ length: 21 }, (_, i) => 20 - i).map((num) => (
+          <button
+            key={num}
+            onClick={() => handleClick(num)}
+            disabled={num > currentNumber || completed || failed}
+            className={`w-16 h-16 rounded-lg font-bold text-lg transition-all ${
+              num > currentNumber
+                ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                : num === currentNumber
+                ? 'bg-gradient-to-br from-green-400 to-green-600 text-white animate-pulse scale-110 shadow-lg'
+                : 'bg-gradient-to-br from-blue-400 to-blue-600 text-white'
+            }`}
+          >
+            {num}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -990,46 +1261,74 @@ function CursorChainReactionGame({ minigame, onInput }: { minigame: MinigameConf
   )
 }
 
-// Stickman Cannon Jump - Time your jumps
+// Stickman Cannon Jump - Jump over cannonballs
 function StickmanCannonJumpGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
-  const [power, setPower] = useState(0)
-  const [launched, setLaunched] = useState(false)
+  const [jumps, setJumps] = useState(0)
+  const [isJumping, setIsJumping] = useState(false)
+  const [cannonFired, setCannonFired] = useState(false)
 
   useEffect(() => {
-    if (launched) return
+    const fireInterval = setInterval(() => {
+      setCannonFired(true)
+      setTimeout(() => setCannonFired(false), 800)
+    }, 2000)
 
-    const interval = setInterval(() => {
-      setPower(prev => (prev + 5) % 100)
-    }, 50)
+    return () => clearInterval(fireInterval)
+  }, [])
 
-    return () => clearInterval(interval)
-  }, [launched])
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat && !isJumping) {
+        setIsJumping(true)
+        setJumps(prev => prev + 1)
+        onInput({ action: 'jump', timestamp: Date.now() })
+        setTimeout(() => setIsJumping(false), 600)
+      }
+    }
 
-  const handleLaunch = () => {
-    if (launched) return
-    setLaunched(true)
-    onInput({ power, timestamp: Date.now() })
-  }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onInput, isJumping])
 
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4">Click at max power!</h3>
-      <div className="mb-6">
-        <div className="w-full h-12 bg-gray-300 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 transition-all"
-            style={{ width: `${power}%` }}
-          />
+    <div className="bg-gradient-to-br from-orange-200 to-red-200 rounded-lg p-12 text-center">
+      <h3 className="text-xl font-bold mb-4 text-gray-800">💣 Jump Over Cannonballs! 💣</h3>
+      <p className="text-sm text-gray-700 mb-4">Press SPACEBAR to jump!</p>
+      
+      <div className="relative h-72 bg-gradient-to-b from-blue-300 to-green-400 rounded-lg overflow-hidden border-4 border-gray-800 mb-6">
+        {/* Ground */}
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-b from-green-600 to-green-800" />
+        
+        {/* Cannon */}
+        <div className="absolute bottom-16 left-8">
+          <div className={`w-16 h-8 bg-gray-700 rounded-r-full transition-transform ${cannonFired ? 'scale-110' : ''}`} />
+          <div className="w-8 h-12 bg-gray-800 ml-2" />
         </div>
-        <p className="text-4xl font-bold mt-2">{power}%</p>
+        
+        {/* Cannonball */}
+        {cannonFired && (
+          <div 
+            className="absolute bottom-24 left-24 w-8 h-8 bg-gray-900 rounded-full animate-ping"
+            style={{ animation: 'ping 0.8s cubic-bezier(0, 0, 0.2, 1)' }}
+          />
+        )}
+        
+        {/* Player */}
+        <div 
+          className="absolute right-1/4 transition-all duration-600"
+          style={{ 
+            bottom: isJumping ? '140px' : '64px',
+            transform: 'translateX(50%)'
+          }}
+        >
+          <div className="text-5xl">{isJumping ? '🤸' : '🧑'}</div>
+        </div>
       </div>
-      <button
-        onClick={handleLaunch}
-        disabled={launched}
-        className="btn btn-primary text-2xl px-12 py-6"
-      >
-        {launched ? 'Launched!' : 'LAUNCH'}
-      </button>
+      
+      <div className="bg-white rounded-full px-8 py-4 inline-block shadow-lg">
+        <div className="text-5xl font-bold text-orange-600">⚡ {jumps}</div>
+        <p className="text-sm text-gray-600 mt-1">Successful Jumps</p>
+      </div>
     </div>
   )
 }
@@ -1039,26 +1338,37 @@ function MathFlashRushGame({ minigame, onInput }: { minigame: MinigameConfig; on
   const [problem, setProblem] = useState({ a: 5, b: 3, op: '+' })
   const [answer, setAnswer] = useState('')
   const [score, setScore] = useState(0)
+  const [streak, setStreak] = useState(0)
+  const [flash, setFlash] = useState<'correct' | 'wrong' | null>(null)
 
   useEffect(() => {
     const a = Math.floor(Math.random() * 20) + 1
     const b = Math.floor(Math.random() * 20) + 1
-    const ops = ['+', '-', '*']
+    const ops = ['+', '-', '×']
     const op = ops[Math.floor(Math.random() * ops.length)]
     setProblem({ a, b, op })
   }, [])
 
   const checkAnswer = () => {
+    if (!answer) return
+    
     let correct = 0
     switch (problem.op) {
       case '+': correct = problem.a + problem.b; break
       case '-': correct = problem.a - problem.b; break
-      case '*': correct = problem.a * problem.b; break
+      case '×': correct = problem.a * problem.b; break
     }
 
     const isCorrect = parseInt(answer) === correct
+    
+    setFlash(isCorrect ? 'correct' : 'wrong')
+    setTimeout(() => setFlash(null), 200)
+    
     if (isCorrect) {
       setScore(prev => prev + 1)
+      setStreak(prev => prev + 1)
+    } else {
+      setStreak(0)
     }
 
     onInput({ answer: parseInt(answer), correct: isCorrect, timestamp: Date.now() })
@@ -1066,32 +1376,56 @@ function MathFlashRushGame({ minigame, onInput }: { minigame: MinigameConfig; on
     // Next problem
     const a = Math.floor(Math.random() * 20) + 1
     const b = Math.floor(Math.random() * 20) + 1
-    const ops = ['+', '-', '*']
+    const ops = ['+', '-', '×']
     const op = ops[Math.floor(Math.random() * ops.length)]
     setProblem({ a, b, op })
     setAnswer('')
   }
 
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4">Solve as fast as possible!</h3>
-      <div className="text-6xl font-bold mb-6">
-        {problem.a} {problem.op} {problem.b} = ?
+    <div className={`rounded-lg p-12 text-center transition-colors duration-200 ${
+      flash === 'correct' 
+        ? 'bg-gradient-to-br from-green-300 to-green-400' 
+        : flash === 'wrong'
+        ? 'bg-gradient-to-br from-red-300 to-red-400'
+        : 'bg-gradient-to-br from-indigo-200 to-purple-200'
+    }`}>
+      <h3 className="text-xl font-bold mb-2 text-gray-800">⚡ Math Flash Rush! ⚡</h3>
+      <p className="text-sm text-gray-600 mb-4">Solve equations as fast as you can!</p>
+      
+      <div className="bg-white rounded-2xl p-8 mb-6 shadow-2xl">
+        <div className="text-8xl font-black text-gray-800 mb-4 font-mono">
+          {problem.a} {problem.op} {problem.b} = ?
+        </div>
+        <input
+          type="number"
+          value={answer}
+          onChange={(e) => setAnswer(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && checkAnswer()}
+          className="text-6xl font-bold text-center w-64 px-6 py-4 border-4 border-purple-500 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-300"
+          placeholder="?"
+          autoFocus
+        />
       </div>
-      <input
-        type="number"
-        value={answer}
-        onChange={(e) => setAnswer(e.target.value)}
-        onKeyPress={(e) => e.key === 'Enter' && checkAnswer()}
-        className="input-field text-4xl text-center w-48 mb-4"
-        placeholder="?"
-        autoFocus
-      />
-      <br />
-      <button onClick={checkAnswer} className="btn btn-primary text-xl px-8 py-3">
-        Submit
+      
+      <button 
+        onClick={checkAnswer} 
+        disabled={!answer}
+        className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold text-2xl px-16 py-6 rounded-full disabled:opacity-50 transition-all hover:scale-105 shadow-xl mb-6"
+      >
+        🚀 Submit
       </button>
-      <p className="text-2xl font-bold mt-4">Score: {score}</p>
+      
+      <div className="flex justify-center gap-8">
+        <div className="bg-white rounded-full px-8 py-4 shadow-lg">
+          <div className="text-4xl font-bold text-green-600">🎯 {score}</div>
+          <p className="text-sm text-gray-600">Correct</p>
+        </div>
+        <div className="bg-white rounded-full px-8 py-4 shadow-lg">
+          <div className="text-4xl font-bold text-orange-600">🔥 {streak}</div>
+          <p className="text-sm text-gray-600">Streak</p>
+        </div>
+      </div>
     </div>
   )
 }
