@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Player {
+  id        String   @id @default(uuid())
+  username  String
+  createdAt DateTime @default(now())
+
+  stats PlayerStats?
+}
+
+model PlayerStats {
+  id                    String   @id @default(uuid())
+  playerId              String   @unique
+  totalMinigameWins     Int      @default(0)
+  totalTimePlayedSeconds Int     @default(0)
+  totalLobbyWins        Int      @default(0)
+  
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+}
+
+model Lobby {
+  id            String   @id @default(uuid())
+  lobbyCode     String   @unique
+  name          String
+  hostPlayerId  String
+  status        String
+  settings      String
+  createdAt     DateTime @default(now())
+  isPublic      Boolean  @default(true)
+  playerCount   Int      @default(0)
+  maxPlayers    Int      @default(16)
+}
