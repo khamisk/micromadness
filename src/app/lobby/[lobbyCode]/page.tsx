@@ -20,6 +20,7 @@ export default function LobbyPage() {
   useEffect(() => {
     if (!isConnected || !player || isJoining) return
 
+    console.log('🎮 Attempting to join lobby:', lobbyCode)
     setIsJoining(true)
 
     // Auto-join lobby
@@ -28,6 +29,7 @@ export default function LobbyPage() {
       playerId: player.playerId,
       username: player.username,
     }, (response: { success: boolean; error?: string }) => {
+      console.log('📡 Join lobby response:', response)
       setIsJoining(false)
       if (!response.success) {
         setError(response.error || 'Failed to join lobby')
@@ -35,24 +37,28 @@ export default function LobbyPage() {
       }
     })
 
-    // Timeout fallback
+    // Timeout fallback - increased to 15 seconds
     const timeout = setTimeout(() => {
       if (!lobbyState) {
+        console.error('⏱️ Lobby load timeout')
         setError('Connection timeout - lobby may not exist')
         setTimeout(() => router.push('/'), 2000)
       }
-    }, 10000)
+    }, 15000)
 
     // Listen for lobby updates
     const handleLobbyState = (state: LobbyState) => {
+      console.log('📊 Received lobby state:', state)
       setLobbyState(state)
     }
 
     const handleGameStarted = () => {
+      console.log('🎮 Game started, redirecting...')
       router.push(`/game/${lobbyCode}`)
     }
 
     const handleError = (message: string) => {
+      console.error('❌ Lobby error:', message)
       setError(message)
     }
 

@@ -149,6 +149,11 @@ export class GameManager {
     this.broadcastLobbyState()
   }
 
+  isPlayerConnected(playerId: string): boolean {
+    const player = this.players.get(playerId)
+    return player ? player.isConnected : false
+  }
+
   togglePlayerReady(playerId: string) {
     const player = this.players.get(playerId)
     if (!player || !this.lobby) return

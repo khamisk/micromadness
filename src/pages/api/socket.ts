@@ -69,14 +69,20 @@ export default async function handler(
             return
           }
 
+          // Join room FIRST so socket can receive broadcasts
+          socket.join(lobbyCode)
+          socket.data.lobbyCode = lobbyCode
+          socket.data.playerId = playerId
+
           const result = await gameManager.joinLobby(lobbyCode, playerId, username, socket.id)
           
           if (result.success) {
-            socket.join(lobbyCode)
-            socket.data.lobbyCode = lobbyCode
-            socket.data.playerId = playerId
             callback({ success: true })
           } else {
+            // If join failed, leave the room
+            socket.leave(lobbyCode)
+            socket.data.lobbyCode = undefined
+            socket.data.playerId = undefined
             callback({ success: false, error: result.error || 'Failed to join lobby' })
           }
         } catch (error) {
@@ -163,12 +169,23 @@ export default async function handler(
         if (lobbyCode && playerId) {
           const gameManager = gameManagers.get(lobbyCode)
           if (gameManager) {
+            // Mark as disconnected immediately
             gameManager.playerDisconnected(playerId)
             
-            // Clean up empty lobbies
-            if (gameManager.getPlayerCount() === 0) {
-              gameManagers.delete(lobbyCode)
-            }
+            // After 30 seconds, if still disconnected, remove them
+            setTimeout(() => {
+              const stillExists = gameManagers.get(lobbyCode)
+              if (stillExists && !stillExists.isPlayerConnected(playerId)) {
+                console.log(`Removing disconnected player ${playerId} from lobby ${lobbyCode}`)
+                stillExists.playerLeft(playerId)
+                
+                // Clean up empty lobbies
+                if (stillExists.getPlayerCount() === 0) {
+                  gameManagers.delete(lobbyCode)
+                  console.log(`Deleted empty lobby ${lobbyCode}`)
+                }
+              }
+            }, 30000) // 30 second grace period for reconnection
           }
         }
       })
