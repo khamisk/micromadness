@@ -35,11 +35,11 @@ export function useSocket() {
       setIsConnected(false)
     })
 
-    socket.on('reconnect_attempt', (attemptNumber) => {
+    ;(socket as any).on('reconnect_attempt', (attemptNumber: number) => {
       console.log(`🔄 Reconnection attempt #${attemptNumber}`)
     })
 
-    socket.on('reconnect_failed', () => {
+    ;(socket as any).on('reconnect_failed', () => {
       console.error('❌ Failed to reconnect after all attempts')
     })
 
