@@ -45,7 +45,7 @@ export function useSocket() {
     handler: ServerToClientEvents[Event]
   ) => {
     if (socketRef.current) {
-      socketRef.current.on(event, handler)
+      socketRef.current.on(event, handler as any)
     }
   }, [])
 
@@ -54,7 +54,7 @@ export function useSocket() {
     handler?: ServerToClientEvents[Event]
   ) => {
     if (socketRef.current) {
-      socketRef.current.off(event, handler)
+      socketRef.current.off(event, handler as any)
     }
   }, [])
 
