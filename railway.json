@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "cp prisma/schema.production.prisma prisma/schema.prisma && npx prisma migrate deploy && npm run start",
+    "startCommand": "cp prisma/schema.production.prisma prisma/schema.prisma && npx prisma db push --accept-data-loss && npm run start",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
