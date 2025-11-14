@@ -238,6 +238,7 @@ function PrecisionMazeGame({ minigame, onInput }: { minigame: MinigameConfig; on
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [completed, setCompleted] = useState(false)
   const [touched, setTouched] = useState(false)
+  const [started, setStarted] = useState(false)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -246,16 +247,32 @@ function PrecisionMazeGame({ minigame, onInput }: { minigame: MinigameConfig; on
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const path = minigame.config?.path || [[50, 100], [250, 100], [250, 300], [450, 300]]
-    const pathWidth = minigame.config?.pathWidth || 60
+    // More complex maze path with narrower corridors
+    const path = [
+      [50, 50],
+      [150, 50],
+      [150, 150],
+      [250, 150],
+      [250, 50],
+      [350, 50],
+      [350, 200],
+      [200, 200],
+      [200, 300],
+      [400, 300],
+      [400, 350]
+    ]
+    const pathWidth = 35 // Narrower path
 
     const drawMaze = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.fillStyle = '#333'
+      
+      // Dark background
+      ctx.fillStyle = '#1a1a1a'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       
-      ctx.strokeStyle = '#fff'
-      ctx.lineWidth = pathWidth
+      // Draw walls (thicker lines)
+      ctx.strokeStyle = '#2a2a2a'
+      ctx.lineWidth = pathWidth + 20
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
       ctx.beginPath()
@@ -264,18 +281,34 @@ function PrecisionMazeGame({ minigame, onInput }: { minigame: MinigameConfig; on
         ctx.lineTo(path[i][0], path[i][1])
       }
       ctx.stroke()
-
-      // Start circle
-      ctx.fillStyle = '#00ff00'
+      
+      // Draw path
+      ctx.strokeStyle = '#444'
+      ctx.lineWidth = pathWidth
       ctx.beginPath()
-      ctx.arc(path[0][0], path[0][1], 15, 0, Math.PI * 2)
-      ctx.fill()
+      ctx.moveTo(path[0][0], path[0][1])
+      for (let i = 1; i < path.length; i++) {
+        ctx.lineTo(path[i][0], path[i][1])
+      }
+      ctx.stroke()
 
-      // End circle
+      // Start circle (green)
+      ctx.fillStyle = started ? '#00aa00' : '#00ff00'
+      ctx.strokeStyle = '#fff'
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.arc(path[0][0], path[0][1], 20, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+
+      // End circle (red)
       ctx.fillStyle = '#ff0000'
+      ctx.strokeStyle = '#fff'
+      ctx.lineWidth = 3
       ctx.beginPath()
-      ctx.arc(path[path.length - 1][0], path[path.length - 1][1], 15, 0, Math.PI * 2)
+      ctx.arc(path[path.length - 1][0], path[path.length - 1][1], 20, 0, Math.PI * 2)
       ctx.fill()
+      ctx.stroke()
     }
 
     const handleMove = (e: MouseEvent) => {
@@ -284,15 +317,27 @@ function PrecisionMazeGame({ minigame, onInput }: { minigame: MinigameConfig; on
       const y = e.clientY - rect.top
       
       const pixel = ctx.getImageData(x, y, 1, 1).data
-      if (pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0) {
-        if (!touched) {
-          setTouched(true)
-          onInput({ action: 'touched_wall', timestamp: Date.now() })
-        }
+      
+      // Check if on start circle
+      const startDist = Math.sqrt((x - path[0][0]) ** 2 + (y - path[0][1]) ** 2)
+      if (startDist <= 20 && !started) {
+        setStarted(true)
+        drawMaze()
       }
+      
+      // Only check for completion if started
+      if (started) {
+        // Check if touched wall (dark background)
+        if (pixel[0] < 50 && pixel[1] < 50 && pixel[2] < 50) {
+          if (!touched) {
+            setTouched(true)
+            onInput({ action: 'touched_wall', timestamp: Date.now() })
+          }
+        }
 
-      if (pixel[0] === 255 && pixel[1] === 0 && pixel[2] === 0) {
-        if (!completed && !touched) {
+        // Check if reached end
+        const endDist = Math.sqrt((x - path[path.length - 1][0]) ** 2 + (y - path[path.length - 1][1]) ** 2)
+        if (endDist <= 20 && !completed && !touched) {
           setCompleted(true)
           onInput({ action: 'completed', timestamp: Date.now(), touched: false })
         }
@@ -305,14 +350,16 @@ function PrecisionMazeGame({ minigame, onInput }: { minigame: MinigameConfig; on
     return () => {
       canvas.removeEventListener('mousemove', handleMove)
     }
-  }, [minigame.config, onInput, completed, touched])
+  }, [minigame.config, onInput, completed, touched, started])
 
   return (
     <div className="bg-white bg-opacity-90 rounded-lg p-8 text-center">
-      <h3 className="text-xl font-bold mb-4">Navigate to the red circle without touching walls!</h3>
-      <canvas ref={canvasRef} width={500} height={400} className="border-4 border-gray-800 mx-auto" />
-      {touched && <p className="text-red-600 font-bold mt-4">Touched wall!</p>}
-      {completed && <p className="text-green-600 font-bold mt-4">Completed!</p>}
+      <h3 className="text-xl font-bold mb-4">
+        {!started ? 'Start on the GREEN circle!' : 'Navigate to RED without touching walls!'}
+      </h3>
+      <canvas ref={canvasRef} width={450} height={400} className="border-4 border-gray-800 mx-auto rounded" />
+      {touched && <p className="text-red-600 font-bold mt-4 text-2xl">❌ Touched wall - FAILED!</p>}
+      {completed && <p className="text-green-600 font-bold mt-4 text-2xl">✅ Success!</p>}
     </div>
   )
 }
@@ -653,40 +700,95 @@ function ReverseAPMGame({ minigame, onInput }: { minigame: MinigameConfig; onInp
   )
 }
 
-// Deadly Corners - Stay away from corners
+// Deadly Corners - Pick a corner every round
 function DeadlyCornersGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
-  const [mousePos, setMousePos] = useState({ x: 250, y: 250 })
-  const [safe, setSafe] = useState(true)
+  const [selectedCorner, setSelectedCorner] = useState<string | null>(null)
+  const [round, setRound] = useState(1)
+  const [timeLeft, setTimeLeft] = useState(5)
+  const [lethalCorner, setLethalCorner] = useState<string | null>(null)
+  const [eliminated, setEliminated] = useState(false)
 
   useEffect(() => {
-    const handleMove = (e: MouseEvent) => {
-      setMousePos({ x: e.clientX, y: e.clientY })
-      
-      const dangerZone = 100
-      const inDanger = 
-        e.clientX < dangerZone || 
-        e.clientX > window.innerWidth - dangerZone ||
-        e.clientY < dangerZone || 
-        e.clientY > window.innerHeight - dangerZone
-      
-      if (inDanger !== !safe) {
-        setSafe(!inDanger)
-        if (inDanger) {
-          onInput({ action: 'entered_danger', timestamp: Date.now() })
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          // Round ends
+          const corners = ['A', 'B', 'C', 'D']
+          const deadly = corners[Math.floor(Math.random() * corners.length)]
+          setLethalCorner(deadly)
+          
+          if (selectedCorner === deadly) {
+            setEliminated(true)
+            onInput({ action: 'eliminated', corner: selectedCorner, round, timestamp: Date.now() })
+          } else {
+            onInput({ action: 'survived', corner: selectedCorner, round, timestamp: Date.now() })
+          }
+          
+          // Next round
+          setTimeout(() => {
+            if (!eliminated && selectedCorner !== deadly) {
+              setLethalCorner(null)
+              setSelectedCorner(null)
+              setRound(prev => prev + 1)
+              return 5
+            }
+          }, 2000)
+          
+          return 0
         }
-      }
-    }
+        return prev - 1
+      })
+    }, 1000)
 
-    window.addEventListener('mousemove', handleMove)
-    return () => window.removeEventListener('mousemove', handleMove)
-  }, [safe, onInput])
+    return () => clearInterval(timer)
+  }, [selectedCorner, round, eliminated, onInput])
+
+  const handleSelectCorner = (corner: string) => {
+    if (lethalCorner || eliminated) return
+    setSelectedCorner(corner)
+  }
+
+  const corners = [
+    { id: 'A', label: 'A', color: 'bg-red-500', position: 'top-0 left-0' },
+    { id: 'B', label: 'B', color: 'bg-blue-500', position: 'top-0 right-0' },
+    { id: 'C', label: 'C', color: 'bg-green-500', position: 'bottom-0 left-0' },
+    { id: 'D', label: 'D', color: 'bg-yellow-500', position: 'bottom-0 right-0' },
+  ]
 
   return (
     <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4">Stay away from screen edges!</h3>
-      <div className={`text-6xl font-bold ${safe ? 'text-green-600' : 'text-red-600'}`}>
-        {safe ? '✓ SAFE' : '✗ DANGER'}
+      <h3 className="text-xl font-bold mb-4">Pick a Corner Every Round!</h3>
+      <p className="text-gray-600 mb-2">Round {round} - {timeLeft}s left</p>
+      {eliminated && <p className="text-red-600 font-bold text-2xl mb-4">❌ ELIMINATED!</p>}
+      
+      <div className="relative w-96 h-96 mx-auto bg-gray-800 rounded-lg">
+        {corners.map((corner) => (
+          <button
+            key={corner.id}
+            onClick={() => handleSelectCorner(corner.id)}
+            disabled={!!lethalCorner || eliminated}
+            className={`absolute w-44 h-44 ${corner.position} ${corner.color} 
+              ${selectedCorner === corner.id ? 'ring-8 ring-white' : ''}
+              ${lethalCorner === corner.id ? 'opacity-50' : ''}
+              hover:opacity-80 transition-all flex items-center justify-center text-white text-6xl font-bold`}
+          >
+            {lethalCorner === corner.id && '💀'}
+            {lethalCorner && lethalCorner !== corner.id && '✅'}
+            {!lethalCorner && corner.label}
+          </button>
+        ))}
+        
+        {/* Center display */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="bg-gray-900 bg-opacity-90 rounded-full w-32 h-32 flex items-center justify-center text-white text-4xl font-bold">
+            {timeLeft}
+          </div>
+        </div>
       </div>
+      
+      {selectedCorner && !lethalCorner && (
+        <p className="text-blue-600 font-bold mt-4">Selected: {selectedCorner}</p>
+      )}
     </div>
   )
 }
@@ -694,55 +796,196 @@ function DeadlyCornersGame({ minigame, onInput }: { minigame: MinigameConfig; on
 // Group Coinflip - Choose heads or tails
 function GroupCoinflipGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
   const [choice, setChoice] = useState<string | null>(null)
+  const [flipping, setFlipping] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
+  const [rotation, setRotation] = useState(0)
 
   const handleChoice = (side: string) => {
     if (choice) return
     setChoice(side)
     onInput({ choice: side, timestamp: Date.now() })
+    
+    // Simulate coin flip after choice
+    setTimeout(() => {
+      setFlipping(true)
+      const flipResult = Math.random() < 0.5 ? 'heads' : 'tails'
+      
+      // Animate flip
+      let rotations = 0
+      const flipInterval = setInterval(() => {
+        rotations += 180
+        setRotation(rotations)
+        if (rotations >= 1440) { // 8 flips
+          clearInterval(flipInterval)
+          setResult(flipResult)
+          setFlipping(false)
+        }
+      }, 100)
+    }, 1000)
   }
 
   return (
     <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
       <h3 className="text-xl font-bold mb-4">Choose Heads or Tails!</h3>
-      <p className="text-gray-600 mb-6">Join the majority to survive</p>
-      <div className="flex gap-4 justify-center">
-        <button
-          onClick={() => handleChoice('heads')}
-          disabled={choice !== null}
-          className={`btn text-2xl px-12 py-8 ${choice === 'heads' ? 'btn-primary' : 'bg-gray-300'}`}
+      <p className="text-gray-600 mb-6">Wrong choice = lose a life!</p>
+      
+      {/* Coin Display */}
+      <div className="mb-8">
+        <div 
+          className="w-48 h-48 mx-auto rounded-full shadow-2xl flex items-center justify-center text-6xl font-bold transition-transform duration-100"
+          style={{ 
+            transform: `rotateY(${rotation}deg)`,
+            background: rotation % 360 < 180 ? 'linear-gradient(145deg, #FFD700, #FFA500)' : 'linear-gradient(145deg, #C0C0C0, #808080)',
+            border: '8px solid #DAA520'
+          }}
         >
-          Heads
-        </button>
-        <button
-          onClick={() => handleChoice('tails')}
-          disabled={choice !== null}
-          className={`btn text-2xl px-12 py-8 ${choice === 'tails' ? 'btn-primary' : 'bg-gray-300'}`}
-        >
-          Tails
-        </button>
+          {!flipping && !result && '?'}
+          {flipping && '💫'}
+          {result && (result === 'heads' ? '👑' : '🦅')}
+        </div>
+        {result && (
+          <p className={`mt-4 text-3xl font-bold ${result === choice ? 'text-green-600' : 'text-red-600'}`}>
+            {result === 'heads' ? 'HEADS!' : 'TAILS!'}
+            <br />
+            {result === choice ? '✅ You Win!' : '❌ You Lose!'}
+          </p>
+        )}
       </div>
-      {choice && <p className="text-green-600 font-bold mt-4">Choice locked in!</p>}
+      
+      {!choice && (
+        <div className="flex gap-4 justify-center">
+          <button
+            onClick={() => handleChoice('heads')}
+            className="btn btn-primary text-2xl px-12 py-8"
+          >
+            👑 Heads
+          </button>
+          <button
+            onClick={() => handleChoice('tails')}
+            className="btn btn-primary text-2xl px-12 py-8"
+          >
+            🦅 Tails
+          </button>
+        </div>
+      )}
+      
+      {choice && !result && (
+        <p className="text-blue-600 font-bold text-xl">
+          {flipping ? '🎲 Flipping...' : `Selected: ${choice === 'heads' ? '👑 Heads' : '🦅 Tails'}`}
+        </p>
+      )}
     </div>
   )
 }
 
-// Cursor Chain Reaction - Click spreading circles
+// Cursor Chain Reaction - Avoid bouncing balls
 function CursorChainReactionGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
-  const [clicks, setClicks] = useState(0)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [balls, setBalls] = useState<Array<{x: number, y: number, vx: number, vy: number, radius: number}>>([])
+  const [hit, setHit] = useState(false)
+  const [mousePos, setMousePos] = useState({ x: 225, y: 225 })
 
-  const handleClick = (e: React.MouseEvent) => {
-    setClicks(prev => prev + 1)
-    onInput({ x: e.clientX, y: e.clientY, clicks: clicks + 1, timestamp: Date.now() })
+  useEffect(() => {
+    // Start with one ball
+    setBalls([{
+      x: Math.random() * 400 + 25,
+      y: Math.random() * 400 + 25,
+      vx: (Math.random() - 0.5) * 6,
+      vy: (Math.random() - 0.5) * 6,
+      radius: 20
+    }])
+
+    // Add new ball every 3 seconds
+    const addBallInterval = setInterval(() => {
+      setBalls(prev => [...prev, {
+        x: Math.random() * 400 + 25,
+        y: Math.random() * 400 + 25,
+        vx: (Math.random() - 0.5) * 6,
+        vy: (Math.random() - 0.5) * 6,
+        radius: 20
+      }])
+    }, 3000)
+
+    return () => clearInterval(addBallInterval)
+  }, [])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || hit) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const animate = () => {
+      // Clear canvas
+      ctx.fillStyle = '#f0f0f0'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Update and draw balls
+      const newBalls = balls.map(ball => {
+        let newX = ball.x + ball.vx
+        let newY = ball.y + ball.vy
+        let newVx = ball.vx
+        let newVy = ball.vy
+
+        // Bounce off walls
+        if (newX - ball.radius < 0 || newX + ball.radius > canvas.width) {
+          newVx = -newVx
+          newX = ball.x + newVx
+        }
+        if (newY - ball.radius < 0 || newY + ball.radius > canvas.height) {
+          newVy = -newVy
+          newY = ball.y + newVy
+        }
+
+        // Draw ball
+        ctx.fillStyle = '#ff4444'
+        ctx.beginPath()
+        ctx.arc(newX, newY, ball.radius, 0, Math.PI * 2)
+        ctx.fill()
+
+        // Check collision with mouse
+        const dist = Math.sqrt((newX - mousePos.x) ** 2 + (newY - mousePos.y) ** 2)
+        if (dist < ball.radius + 10 && !hit) {
+          setHit(true)
+          onInput({ action: 'hit', timestamp: Date.now() })
+        }
+
+        return { ...ball, x: newX, y: newY, vx: newVx, vy: newVy }
+      })
+
+      setBalls(newBalls)
+
+      // Draw cursor
+      ctx.fillStyle = hit ? '#ff0000' : '#00ff00'
+      ctx.beginPath()
+      ctx.arc(mousePos.x, mousePos.y, 10, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    const animationId = setInterval(animate, 1000 / 60)
+    return () => clearInterval(animationId)
+  }, [balls, mousePos, hit, onInput])
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setMousePos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    })
   }
 
   return (
-    <div 
-      className="bg-white bg-opacity-90 rounded-lg p-12 text-center cursor-crosshair"
-      onClick={handleClick}
-    >
-      <h3 className="text-xl font-bold mb-4">Click to create chain reactions!</h3>
-      <div className="text-6xl font-bold text-primary mb-4">{clicks}</div>
-      <p className="text-gray-600">Clicks</p>
+    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
+      <h3 className="text-xl font-bold mb-4">Avoid the bouncing balls!</h3>
+      <p className="text-gray-600 mb-4">Balls: {balls.length} | {hit ? '❌ HIT!' : '✅ Surviving'}</p>
+      <canvas 
+        ref={canvasRef} 
+        width={450} 
+        height={450}
+        onMouseMove={handleMouseMove}
+        className="border-4 border-gray-800 mx-auto rounded cursor-none"
+      />
     </div>
   )
 }
