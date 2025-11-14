@@ -15,36 +15,11 @@ export default function LobbyPage() {
   const lobbyCode = params?.lobbyCode as string
   const [lobbyState, setLobbyState] = useState<LobbyState | null>(null)
   const [error, setError] = useState('')
-  const [isJoining, setIsJoining] = useState(false)
+  const [hasJoined, setHasJoined] = useState(false)
 
+  // Set up socket event listeners
   useEffect(() => {
-    if (!isConnected || !player || isJoining) return
-
-    console.log('🎮 Attempting to join lobby:', lobbyCode)
-    setIsJoining(true)
-
-    // Auto-join lobby
-    emit('joinLobby', {
-      lobbyCode,
-      playerId: player.playerId,
-      username: player.username,
-    }, (response: { success: boolean; error?: string }) => {
-      console.log('📡 Join lobby response:', response)
-      setIsJoining(false)
-      if (!response.success) {
-        setError(response.error || 'Failed to join lobby')
-        setTimeout(() => router.push('/'), 2000)
-      }
-    })
-
-    // Timeout fallback - increased to 15 seconds
-    const timeout = setTimeout(() => {
-      if (!lobbyState) {
-        console.error('⏱️ Lobby load timeout')
-        setError('Connection timeout - lobby may not exist')
-        setTimeout(() => router.push('/'), 2000)
-      }
-    }, 15000)
+    if (!isConnected || !player) return
 
     // Listen for lobby updates
     const handleLobbyState = (state: LobbyState) => {
@@ -73,13 +48,46 @@ export default function LobbyPage() {
     on('kicked', handleKicked)
 
     return () => {
-      clearTimeout(timeout)
       off('lobbyState', handleLobbyState)
       off('gameStarted', handleGameStarted)
       off('error', handleError)
       off('kicked', handleKicked)
     }
-  }, [isConnected, player, lobbyCode, router, on, off, emit, isJoining, lobbyState])
+  }, [isConnected, player, lobbyCode, router, on, off])
+
+  // Join lobby once when connected
+  useEffect(() => {
+    if (!isConnected || !player || hasJoined) return
+
+    console.log('🎮 Attempting to join lobby:', lobbyCode)
+    setHasJoined(true)
+
+    // Auto-join lobby
+    emit('joinLobby', {
+      lobbyCode,
+      playerId: player.playerId,
+      username: player.username,
+    }, (response: { success: boolean; error?: string }) => {
+      console.log('📡 Join lobby response:', response)
+      if (!response.success) {
+        setError(response.error || 'Failed to join lobby')
+        setTimeout(() => router.push('/'), 2000)
+      }
+    })
+
+    // Timeout fallback
+    const timeout = setTimeout(() => {
+      if (!lobbyState) {
+        console.error('⏱️ Lobby load timeout')
+        setError('Connection timeout - lobby may not exist')
+        setTimeout(() => router.push('/'), 2000)
+      }
+    }, 15000)
+
+    return () => {
+      clearTimeout(timeout)
+    }
+  }, [isConnected, player, hasJoined, lobbyCode, emit, router, lobbyState])
 
   const handleToggleReady = () => {
     emit('toggleReady')
