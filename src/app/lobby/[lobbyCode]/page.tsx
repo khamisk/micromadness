@@ -15,9 +15,12 @@ export default function LobbyPage() {
   const lobbyCode = params?.lobbyCode as string
   const [lobbyState, setLobbyState] = useState<LobbyState | null>(null)
   const [error, setError] = useState('')
+  const [isJoining, setIsJoining] = useState(false)
 
   useEffect(() => {
-    if (!isConnected || !player) return
+    if (!isConnected || !player || isJoining) return
+
+    setIsJoining(true)
 
     // Auto-join lobby
     emit('joinLobby', {
@@ -25,11 +28,20 @@ export default function LobbyPage() {
       playerId: player.playerId,
       username: player.username,
     }, (response: { success: boolean; error?: string }) => {
+      setIsJoining(false)
       if (!response.success) {
         setError(response.error || 'Failed to join lobby')
         setTimeout(() => router.push('/'), 2000)
       }
     })
+
+    // Timeout fallback
+    const timeout = setTimeout(() => {
+      if (!lobbyState) {
+        setError('Connection timeout - lobby may not exist')
+        setTimeout(() => router.push('/'), 2000)
+      }
+    }, 10000)
 
     // Listen for lobby updates
     const handleLobbyState = (state: LobbyState) => {
@@ -55,12 +67,13 @@ export default function LobbyPage() {
     on('kicked', handleKicked)
 
     return () => {
+      clearTimeout(timeout)
       off('lobbyState', handleLobbyState)
       off('gameStarted', handleGameStarted)
       off('error', handleError)
       off('kicked', handleKicked)
     }
-  }, [isConnected, player, lobbyCode, router, on, off, emit])
+  }, [isConnected, player, lobbyCode, router, on, off, emit, isJoining, lobbyState])
 
   const handleToggleReady = () => {
     emit('toggleReady')
@@ -90,7 +103,22 @@ export default function LobbyPage() {
     return (
       <main className="min-h-screen flex items-center justify-center p-4">
         <div className="game-card max-w-md w-full text-center">
-          <div className="animate-pulse">Loading lobby...</div>
+          {error ? (
+            <div>
+              <div className="text-red-500 mb-4">{error}</div>
+              <div className="text-sm text-gray-500">Redirecting...</div>
+            </div>
+          ) : !isConnected ? (
+            <div>
+              <div className="animate-pulse mb-2">Connecting to server...</div>
+              <div className="text-sm text-gray-500">Please wait</div>
+            </div>
+          ) : (
+            <div>
+              <div className="animate-pulse mb-2">Loading lobby...</div>
+              <div className="text-sm text-gray-500">Joining {lobbyCode}</div>
+            </div>
+          )}
         </div>
       </main>
     )

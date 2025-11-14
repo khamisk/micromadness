@@ -41,6 +41,8 @@ export default async function handler(
           if (result.success && result.lobbyCode) {
             gameManagers.set(result.lobbyCode, gameManager)
             socket.join(result.lobbyCode)
+            socket.data.lobbyCode = result.lobbyCode
+            socket.data.playerId = playerId
             callback({ success: true, lobbyCode: result.lobbyCode })
           } else {
             callback({ success: false, error: result.error || 'Failed to create lobby' })
