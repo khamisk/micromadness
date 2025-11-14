@@ -14,8 +14,7 @@ export default function CreateLobbyPage() {
   
   const [lobbyName, setLobbyName] = useState(`${player?.username}'s Lobby`)
   const [lives, setLives] = useState(5)
-  const [duration, setDuration] = useState<'short' | 'normal' | 'long'>('normal')
-  const [suddenDeath, setSuddenDeath] = useState(false)
+  const [isPublic, setIsPublic] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState('')
 
@@ -30,8 +29,7 @@ export default function CreateLobbyPage() {
 
     const settings: LobbySettings = {
       lives,
-      minigameDuration: duration,
-      suddenDeathFinale: suddenDeath,
+      isPublic,
     }
 
     emit('createLobby', {
@@ -96,40 +94,17 @@ export default function CreateLobbyPage() {
             </div>
           </div>
 
-          {/* Minigame Duration */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Minigame Duration</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['short', 'normal', 'long'] as const).map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setDuration(d)}
-                  className={`py-2 px-4 rounded font-medium transition-colors ${
-                    duration === d
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {d.charAt(0).toUpperCase() + d.slice(1)}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Short: 8-10s | Normal: 10-12s | Long: 12-15s
-            </p>
-          </div>
-
-          {/* Sudden Death */}
+          {/* Public/Private */}
           <div className="flex items-center">
             <input
               type="checkbox"
-              id="suddenDeath"
-              checked={suddenDeath}
-              onChange={(e) => setSuddenDeath(e.target.checked)}
-              className="mr-2"
+              id="isPublic"
+              checked={isPublic}
+              onChange={(e) => setIsPublic(e.target.checked)}
+              className="mr-2 w-4 h-4"
             />
-            <label htmlFor="suddenDeath" className="text-sm">
-              Sudden Death 1v1 Finale (Coming Soon)
+            <label htmlFor="isPublic" className="text-sm">
+              Public Lobby (visible to everyone)
             </label>
           </div>
 
