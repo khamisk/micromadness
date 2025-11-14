@@ -3,11 +3,25 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
+    // Clean up old lobbies (older than 2 hours)
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000)
+    await prisma.lobby.deleteMany({
+      where: {
+        createdAt: {
+          lt: twoHoursAgo
+        }
+      }
+    })
+
+    // Get active public lobbies
     const lobbies = await prisma.lobby.findMany({
       where: {
         isPublic: true,
         status: {
           in: ['waiting', 'in-progress']
+        },
+        createdAt: {
+          gte: twoHoursAgo // Only show recent lobbies
         }
       },
       orderBy: [

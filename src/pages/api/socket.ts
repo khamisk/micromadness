@@ -175,7 +175,18 @@ export default async function handler(
     })
 
     res.socket.server.io = io
+  } else {
+    console.log('Socket.IO server already initialized')
   }
 
-  res.end()
+  // Health check response
+  if (req.method === 'GET') {
+    res.status(200).json({ 
+      status: 'ok', 
+      connected: res.socket.server.io?.engine?.clientsCount || 0,
+      lobbies: gameManagers.size 
+    })
+  } else {
+    res.end()
+  }
 }

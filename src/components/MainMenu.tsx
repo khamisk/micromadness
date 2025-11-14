@@ -61,8 +61,12 @@ export default function MainMenu() {
   const fetchLobbies = async () => {
     try {
       const response = await fetch('/api/lobbies')
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
       const data = await response.json()
       if (data.lobbies) {
+        console.log('Fetched lobbies:', data.lobbies.length)
         setLobbies(data.lobbies)
       }
     } catch (error) {
@@ -272,7 +276,10 @@ export default function MainMenu() {
             ➕ Create New Lobby
           </button>
           {!isConnected && (
-            <p className="text-yellow-300 text-sm mt-2">Connecting to server...</p>
+            <div className="mt-2">
+              <p className="text-yellow-300 text-sm">Connecting to server...</p>
+              <p className="text-yellow-200 text-xs">If this persists, try refreshing the page</p>
+            </div>
           )}
         </div>
 
