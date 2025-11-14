@@ -22,8 +22,6 @@ interface PlayerStats {
   createdAt: string
 }
 
-const ADMIN_PASSWORD = 'micromadness2024' // Simple password protection
-
 export default function AdminPage() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -56,13 +54,24 @@ export default function AdminPage() {
     }
   }, [isAuthenticated, activeTab])
 
-  const handleLogin = () => {
-    if (password === ADMIN_PASSWORD) {
-      setIsAuthenticated(true)
-      sessionStorage.setItem('adminAuth', 'true')
-      setPassword('')
-    } else {
-      setMessage('Incorrect password')
+  const handleLogin = async () => {
+    try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      
+      if (res.ok) {
+        setIsAuthenticated(true)
+        sessionStorage.setItem('adminAuth', 'true')
+        setPassword('')
+      } else {
+        setMessage('Incorrect password')
+        setTimeout(() => setMessage(''), 3000)
+      }
+    } catch (error) {
+      setMessage('Authentication error')
       setTimeout(() => setMessage(''), 3000)
     }
   }
