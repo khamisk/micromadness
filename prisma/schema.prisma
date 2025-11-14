@@ -18,9 +18,14 @@ model PlayerStats {
   id                     String   @id @default(uuid())
   playerId               String   @unique
   player                 Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  gamesPlayed            Int      @default(0)
+  gamesWon               Int      @default(0)
+  minigamesWon           Int      @default(0)
+  totalLivesLost         Int      @default(0)
   totalMinigameWins      Int      @default(0)
   totalTimePlayedSeconds Int      @default(0)
   totalLobbyWins         Int      @default(0)
+  createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 }
 

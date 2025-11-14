@@ -9,10 +9,11 @@ export async function GET() {
         player: {
           select: {
             username: true,
+            createdAt: true,
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { player: { createdAt: 'desc' } },
     })
 
     const formattedStats = stats.map((stat: any) => ({
@@ -22,7 +23,7 @@ export async function GET() {
       gamesWon: stat.gamesWon,
       minigamesWon: stat.minigamesWon,
       totalLivesLost: stat.totalLivesLost,
-      createdAt: stat.createdAt.toISOString(),
+      createdAt: stat.player.createdAt.toISOString(),
     }))
 
     return NextResponse.json({ stats: formattedStats })
