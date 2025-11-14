@@ -17,6 +17,7 @@ interface LobbyListItem {
   playerCount: number
   maxPlayers: number
   settings: string
+  isPublic: boolean
 }
 
 export default function MainMenu() {
@@ -35,6 +36,7 @@ export default function MainMenu() {
   const [lobbyName, setLobbyName] = useState('')
   const [lives, setLives] = useState(5)
   const [isPublic, setIsPublic] = useState(true)
+  const [lobbyPassword, setLobbyPassword] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState('')
 
@@ -121,6 +123,7 @@ export default function MainMenu() {
     const settings: LobbySettings = {
       lives,
       isPublic,
+      password: !isPublic && lobbyPassword ? lobbyPassword : undefined,
     }
 
     emit('createLobby', {
@@ -328,7 +331,7 @@ export default function MainMenu() {
                       <div className="flex-1">
                         <h3 className="font-bold text-lg truncate">{lobby.name}</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-300 font-mono">
-                          {lobby.lobbyCode}
+                          {lobby.isPublic ? lobby.lobbyCode : '🔒 Private'}
                         </p>
                       </div>
                       {isInProgress && (
@@ -428,6 +431,25 @@ export default function MainMenu() {
                   Public Lobby (visible to everyone)
                 </label>
               </div>
+
+              {!isPublic && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Password (Optional)
+                  </label>
+                  <input
+                    type="password"
+                    className="input-field"
+                    value={lobbyPassword}
+                    onChange={(e) => setLobbyPassword(e.target.value)}
+                    placeholder="Leave empty for no password"
+                    maxLength={50}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Players will need this password to join
+                  </p>
+                </div>
+              )}
 
               {createError && (
                 <div className="bg-red-100 dark:bg-red-900 border border-red-400 text-red-700 dark:text-red-200 px-4 py-3 rounded">

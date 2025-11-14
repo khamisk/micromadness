@@ -16,6 +16,7 @@ export interface PlayerStats {
 export interface LobbySettings {
   lives: number // 3-15
   isPublic: boolean
+  password?: string // Optional password for private lobbies
 }
 
 export interface Lobby {

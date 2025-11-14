@@ -61,7 +61,7 @@ export default async function handler(
 
       socket.on('joinLobby', async (data, callback) => {
         try {
-          const { lobbyCode, playerId, username } = data
+          const { lobbyCode, playerId, username, password } = data
           const gameManager = gameManagers.get(lobbyCode)
           
           if (!gameManager) {
@@ -74,7 +74,7 @@ export default async function handler(
           socket.data.lobbyCode = lobbyCode
           socket.data.playerId = playerId
 
-          const result = await gameManager.joinLobby(lobbyCode, playerId, username, socket.id)
+          const result = await gameManager.joinLobby(lobbyCode, playerId, username, socket.id, password)
           
           if (result.success) {
             callback({ success: true })

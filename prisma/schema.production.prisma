@@ -42,4 +42,5 @@ model Lobby {
   isPublic      Boolean  @default(true)
   playerCount   Int      @default(0)
   maxPlayers    Int      @default(16)
+  password      String?  // Optional password for private lobbies
 }

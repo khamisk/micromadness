@@ -7,6 +7,7 @@ import { useSocket } from '@/hooks/useSocket'
 import { LobbyState, MinigameConfig, MinigameOutcome } from '@/types'
 import { trackGameStarted, trackGameFinished, trackMinigameStarted, trackMinigameFinished } from '@/lib/analytics'
 import MinigameRenderer from '@/components/MinigameRenderer'
+import { soundManager } from '@/utils/sounds'
 
 export default function GamePage() {
   const params = useParams()
@@ -38,6 +39,7 @@ export default function GamePage() {
 
     const handleMinigameStart = (minigame: MinigameConfig) => {
       console.log('🎯 Minigame started:', minigame.name)
+      soundManager.playMinigameStart()
       setCurrentMinigame(minigame)
       setTimeRemaining(minigame.durationSeconds)
       setShowResults(false)
@@ -47,6 +49,13 @@ export default function GamePage() {
 
     const handleMinigameEnd = (outcome: MinigameOutcome) => {
       console.log('✅ Minigame ended:', outcome)
+      // Check if current player lost a life
+      const lostLife = outcome.playersLostLife.includes(player?.playerId || '')
+      if (lostLife) {
+        soundManager.playLose()
+      } else {
+        soundManager.playWin()
+      }
       setLastOutcome(outcome)
       setShowResults(true)
       if (currentMinigame) {

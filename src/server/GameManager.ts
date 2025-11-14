@@ -42,6 +42,8 @@ export class GameManager {
           hostPlayerId,
           status: 'waiting',
           settings: JSON.stringify(settings),
+          password: settings.password || null,
+          isPublic: settings.isPublic,
         },
       })
 
@@ -81,10 +83,16 @@ export class GameManager {
     lobbyCode: string, 
     playerId: string, 
     username: string,
-    socketId: string
+    socketId: string,
+    password?: string
   ): Promise<{ success: boolean; error?: string }> {
     if (!this.lobby || this.lobby.lobbyCode !== lobbyCode) {
       return { success: false, error: 'Lobby not found' }
+    }
+
+    // Check password if lobby has one
+    if (this.lobby.settings.password && this.lobby.settings.password !== password) {
+      return { success: false, error: 'Incorrect password' }
     }
 
     if (this.players.size >= 16) {

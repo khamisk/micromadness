@@ -36,8 +36,9 @@ model Lobby {
   hostPlayerId  String
   createdAt     DateTime @default(now())
   status        String   @default("waiting") // "waiting", "in-progress", "finished"
-  settings      String   // JSON string: { lives, isPublic }
+  settings      String   // JSON string: { lives, isPublic, password }
   isPublic      Boolean  @default(true)
   playerCount   Int      @default(0)
   maxPlayers    Int      @default(16)
+  password      String?  // Optional password for private lobbies
 }

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { usePlayer } from '@/contexts/PlayerContext'
 import { useSocket } from '@/hooks/useSocket'
 import { LobbyState } from '@/types'
+import { soundManager } from '@/utils/sounds'
 
 export default function LobbyPage() {
   const params = useParams()
@@ -27,11 +28,22 @@ export default function LobbyPage() {
     // Listen for lobby updates
     const handleLobbyState = (state: LobbyState) => {
       console.log('📊 Received lobby state:', state)
+      const oldPlayerCount = lobbyState?.players.length || 0
+      const newPlayerCount = state.players.length
+      
+      // Play sounds for player join/leave
+      if (newPlayerCount > oldPlayerCount) {
+        soundManager.playLobbyJoin()
+      } else if (newPlayerCount < oldPlayerCount) {
+        soundManager.playLobbyLeave()
+      }
+      
       setLobbyState(state)
     }
 
     const handleGameStarted = () => {
       console.log('🎮 Game started, redirecting...')
+      soundManager.playCountdown()
       router.push(`/game/${lobbyCode}`)
     }
 
@@ -100,10 +112,12 @@ export default function LobbyPage() {
   }, [isConnected, player, hasJoined, lobbyCode, emit, router, lobbyState])
 
   const handleToggleReady = () => {
+    soundManager.playReady()
     emit('toggleReady')
   }
 
   const handleStartGame = () => {
+    soundManager.playClick()
     emit('startGame')
   }
 
