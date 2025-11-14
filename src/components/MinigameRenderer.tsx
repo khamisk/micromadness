@@ -767,7 +767,7 @@ function AverageBaitGame({ minigame, onInput }: { minigame: MinigameConfig; onIn
           onChange={(e) => setValue(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
           disabled={submitted}
-          className="text-6xl font-bold text-center w-64 px-6 py-4 border-4 border-blue-500 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:bg-gray-200"
+          className="text-6xl font-bold text-center w-64 px-6 py-4 border-4 border-blue-500 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:bg-gray-200 text-gray-900 placeholder-gray-400"
           placeholder="?"
           min="0"
           max="100"
@@ -788,14 +788,14 @@ function AverageBaitGame({ minigame, onInput }: { minigame: MinigameConfig; onIn
 
 // Vote To Kill - Vote for a player
 function VoteToKillGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
-  const players = minigame.config?.players || ['Player 1', 'Player 2', 'Player 3']
+  const players = minigame.config?.players || []
   const [voted, setVoted] = useState<string | null>(null)
   const [hoveredPlayer, setHoveredPlayer] = useState<string | null>(null)
 
-  const handleVote = (playerName: string) => {
+  const handleVote = (playerId: string) => {
     if (voted) return
-    setVoted(playerName)
-    onInput({ vote: playerName, timestamp: Date.now() })
+    setVoted(playerId)
+    onInput({ vote: playerId, timestamp: Date.now() })
   }
 
   return (
@@ -803,34 +803,43 @@ function VoteToKillGame({ minigame, onInput }: { minigame: MinigameConfig; onInp
       <h3 className="text-2xl font-bold mb-2 text-gray-800">☠️ Vote to Eliminate! ☠️</h3>
       <p className="text-sm text-gray-600 mb-6">Choose wisely... someone must go</p>
       
-      <div className="grid gap-4 max-w-lg mx-auto">
-        {players.map((playerName: string, i: number) => (
-          <button
-            key={i}
-            onClick={() => handleVote(playerName)}
-            onMouseEnter={() => setHoveredPlayer(playerName)}
-            onMouseLeave={() => setHoveredPlayer(null)}
-            disabled={!!voted}
-            className={`relative px-8 py-6 rounded-xl font-bold text-xl transition-all duration-200 ${
-              voted === playerName
-                ? 'bg-gradient-to-r from-red-600 to-red-800 text-white scale-105 shadow-2xl'
-                : voted
-                ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                : hoveredPlayer === playerName
-                ? 'bg-gradient-to-r from-orange-400 to-red-500 text-white scale-105 shadow-xl'
-                : 'bg-gradient-to-r from-gray-200 to-gray-300 text-gray-800 hover:shadow-lg'
-            }`}
-          >
-            <span className="text-3xl mr-3">{voted === playerName ? '☠️' : '👤'}</span>
-            {playerName}
-            {voted === playerName && <span className="ml-3">✓</span>}
-          </button>
-        ))}
-      </div>
+      {players.length === 0 ? (
+        <p className="text-gray-600">Waiting for players...</p>
+      ) : (
+        <div className="grid gap-4 max-w-lg mx-auto">
+          {players.map((player: any) => {
+            const playerId = typeof player === 'string' ? player : player.playerId
+            const playerName = typeof player === 'string' ? player : player.username
+            
+            return (
+              <button
+                key={playerId}
+                onClick={() => handleVote(playerId)}
+                onMouseEnter={() => setHoveredPlayer(playerId)}
+                onMouseLeave={() => setHoveredPlayer(null)}
+                disabled={!!voted}
+                className={`relative px-8 py-6 rounded-xl font-bold text-xl transition-all duration-200 ${
+                  voted === playerId
+                    ? 'bg-gradient-to-r from-red-600 to-red-800 text-white scale-105 shadow-2xl'
+                    : voted
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                    : hoveredPlayer === playerId
+                    ? 'bg-gradient-to-r from-orange-400 to-red-500 text-white scale-105 shadow-xl'
+                    : 'bg-gradient-to-r from-gray-200 to-gray-300 text-gray-800 hover:shadow-lg'
+                }`}
+              >
+                <span className="text-3xl mr-3">{voted === playerId ? '☠️' : '👤'}</span>
+                {playerName}
+                {voted === playerId && <span className="ml-3">✓</span>}
+              </button>
+            )
+          })}
+        </div>
+      )}
       
       {voted && (
         <p className="text-red-700 font-bold mt-6 text-lg animate-pulse">
-          ✓ Vote cast for {voted}!
+          ✓ Vote cast!
         </p>
       )}
     </div>
@@ -1402,7 +1411,7 @@ function MathFlashRushGame({ minigame, onInput }: { minigame: MinigameConfig; on
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && checkAnswer()}
-          className="text-6xl font-bold text-center w-64 px-6 py-4 border-4 border-purple-500 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-300"
+          className="text-6xl font-bold text-center w-64 px-6 py-4 border-4 border-purple-500 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-300 text-gray-900 placeholder-gray-400"
           placeholder="?"
           autoFocus
         />
