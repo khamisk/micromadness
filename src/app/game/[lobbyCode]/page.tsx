@@ -23,6 +23,7 @@ export default function GamePage() {
   const [lastOutcome, setLastOutcome] = useState<MinigameOutcome | null>(null)
   const [gameStartTime] = useState(Date.now())
   const [hasRejoined, setHasRejoined] = useState(false)
+  const [minigameStartTime, setMinigameStartTime] = useState<number | null>(null)
 
   // Rejoin lobby when socket connects (for game page)
   useEffect(() => {
@@ -63,6 +64,7 @@ export default function GamePage() {
       soundManager.playMinigameStart()
       setCurrentMinigame(minigame)
       setTimeRemaining(minigame.durationSeconds)
+      setMinigameStartTime(Date.now())
       setShowResults(false)
       setLastOutcome(null)
       trackMinigameStarted(minigame.name)
@@ -79,34 +81,64 @@ export default function GamePage() {
       }
       setLastOutcome(outcome)
       setShowResults(true)
+      setMinigameStartTime(null)
       if (currentMinigame) {
         trackMinigameFinished(currentMinigame.name)
       }
     }
 
-    const handleGameOver = (winnerId: string, winnerUsername: string) => {
-      console.log('🏆 Game over, winner:', winnerUsername)
+    const handleGameOver = (data: { winnerId: string; winnerUsername: string }) => {
+      console.log('🏆 Game over, winner:', data.winnerUsername)
       const duration = Math.floor((Date.now() - gameStartTime) / 1000)
       trackGameFinished(duration)
       
-      // Show winner screen
-      setTimeout(() => {
-        router.push(`/lobby/${lobbyCode}?winner=${winnerUsername}`)
-      }, 5000)
+      const isWinner = data.winnerId === player?.playerId
+      if (isWinner) {
+        soundManager.playWin()
+      } else {
+        soundManager.playLose()
+      }
+      
+      // Show winner announcement briefly
+      alert(`${data.winnerUsername} wins! Returning to lobby...`)
+    }
+
+    const handleReturnToLobby = () => {
+      console.log('↩️ Returning to lobby')
+      router.push(`/lobby/${lobbyCode}`)
     }
 
     on('lobbyState', handleLobbyState)
     on('minigameStart', handleMinigameStart)
     on('minigameEnd', handleMinigameEnd)
     on('gameOver', handleGameOver)
+    on('returnToLobby', handleReturnToLobby)
 
     return () => {
       off('lobbyState', handleLobbyState)
       off('minigameStart', handleMinigameStart)
       off('minigameEnd', handleMinigameEnd)
       off('gameOver', handleGameOver)
+      off('returnToLobby', handleReturnToLobby)
     }
   }, [player, lobbyCode, router, on, off, emit, currentMinigame, gameStartTime])
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (!currentMinigame || !minigameStartTime || showResults) return
+
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - minigameStartTime) / 1000)
+      const remaining = Math.max(0, currentMinigame.durationSeconds - elapsed)
+      setTimeRemaining(remaining)
+      
+      if (remaining === 0) {
+        clearInterval(interval)
+      }
+    }, 100) // Update every 100ms for smooth countdown
+
+    return () => clearInterval(interval)
+  }, [currentMinigame, minigameStartTime, showResults])
 
   const handleMinigameInput = (data: any) => {
     emit('minigameInput', data)

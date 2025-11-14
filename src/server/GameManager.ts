@@ -90,8 +90,9 @@ export class GameManager {
       return { success: false, error: 'Lobby not found' }
     }
 
-    // Check password if lobby has one
-    if (this.lobby.settings.password && this.lobby.settings.password !== password) {
+    // Check password if lobby has one (but skip for host)
+    const isHost = this.lobby.hostPlayerId === playerId
+    if (!isHost && this.lobby.settings.password && this.lobby.settings.password !== password) {
       return { success: false, error: 'Incorrect password' }
     }
 
@@ -280,11 +281,25 @@ export class GameManager {
     this.endGame()
   }
 
-  private applyMinigameOutcome(outcome: MinigameOutcome) {
+  private async applyMinigameOutcome(outcome: MinigameOutcome) {
+    // Find winners (players who didn't lose a life)
+    const allPlayerIds = Array.from(this.players.keys())
+    const winners = allPlayerIds.filter(id => !outcome.playersLostLife.includes(id))
+    
+    // Update stats for winners
+    for (const winnerId of winners) {
+      await this.updatePlayerStats(winnerId, false, 0, 1, 0) // 1 minigame win, 0 lives lost
+    }
+    
+    // Update stats and lives for losers
     for (const playerId of outcome.playersLostLife) {
       const player = this.players.get(playerId)
       if (player && !player.isEliminated) {
         player.currentLives--
+        
+        // Update stats for life lost
+        await this.updatePlayerStats(playerId, false, 0, 0, 1)
+        
         if (player.currentLives <= 0) {
           player.isEliminated = true
         }
@@ -300,11 +315,11 @@ export class GameManager {
     const winner = alivePlayers[0]
 
     if (winner) {
-      this.io.to(this.lobby.lobbyCode).emit('gameOver', winner.playerId, winner.username)
+      this.io.to(this.lobby.lobbyCode).emit('gameOver', {
+        winnerId: winner.playerId,
+        winnerUsername: winner.username
+      })
     }
-
-    this.lobby.status = 'finished'
-    this.broadcastLobbyState()
 
     // Update stats
     const gameEndTime = Date.now()
@@ -314,18 +329,46 @@ export class GameManager {
       const isWinner = player.playerId === winner?.playerId
       await this.updatePlayerStats(player.playerId, isWinner, gameDuration)
     }
+
+    // Reset all players' lives and elimination status
+    for (const player of this.players.values()) {
+      player.currentLives = this.lobby.settings.lives
+      player.isEliminated = false
+      player.isReady = false
+    }
+
+    // Return to waiting status
+    this.lobby.status = 'waiting'
+    
+    // Update lobby status in database
+    prisma.lobby.update({
+      where: { id: this.lobby.id },
+      data: { status: 'waiting' }
+    }).catch((err: any) => console.error('Error updating lobby status:', err))
+
+    this.broadcastLobbyState()
+    
+    // Tell clients to return to lobby
+    this.io.to(this.lobby.lobbyCode).emit('returnToLobby')
   }
 
-  private async updatePlayerStats(playerId: string, isWinner: boolean, gameDuration: number) {
+  private async updatePlayerStats(
+    playerId: string, 
+    isLobbyWinner: boolean, 
+    gameDuration: number,
+    minigameWins: number = 0,
+    livesLost: number = 0
+  ) {
     try {
       await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/stats/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           playerId,
-          minigameWins: 0, // Track per minigame
-          lobbyWin: isWinner,
-          timePlayedSeconds: gameDuration,
+          minigameWins,
+          lobbyWin: isLobbyWinner,
+          livesLost,
+          gameCompleted: isLobbyWinner !== undefined && gameDuration > 0,
         }),
       })
     } catch (error) {

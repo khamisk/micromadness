@@ -20,6 +20,7 @@ export default function LobbyPage() {
   const [showUsernamePrompt, setShowUsernamePrompt] = useState(false)
   const [usernameInput, setUsernameInput] = useState('')
   const [usernameError, setUsernameError] = useState('')
+  const [playerStats, setPlayerStats] = useState<Record<string, any>>({})
 
   // Set up socket event listeners
   useEffect(() => {
@@ -39,6 +40,23 @@ export default function LobbyPage() {
       }
       
       setLobbyState(state)
+      
+      // Fetch stats for all players
+      if (state.players.length > 0) {
+        const playerIds = state.players.map(p => p.playerId)
+        fetch('/api/stats/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playerIds }),
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              setPlayerStats(data.stats)
+            }
+          })
+          .catch(err => console.error('Error fetching stats:', err))
+      }
     }
 
     const handleGameStarted = () => {
@@ -267,44 +285,66 @@ export default function LobbyPage() {
             </h2>
             
             <div className="space-y-2">
-              {players.map((p) => (
-                <div
-                  key={p.playerId}
-                  className="flex items-center justify-between bg-gray-100 dark:bg-gray-700 p-3 rounded"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${p.isReady ? 'bg-success' : 'bg-gray-400'}`} />
-                    <span className="font-medium">{p.username}</span>
-                    {p.playerId === lobby.hostPlayerId && (
-                      <span className="text-xs bg-primary text-white px-2 py-1 rounded">
-                        HOST
-                      </span>
-                    )}
-                    {!p.isConnected && (
-                      <span className="text-xs bg-gray-500 text-white px-2 py-1 rounded">
-                        Disconnected
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <div className="flex">
-                      {Array.from({ length: p.currentLives }).map((_, i) => (
-                        <span key={i} className="text-red-500">❤️</span>
-                      ))}
+              {players.map((p) => {
+                const stats = playerStats[p.playerId]
+                return (
+                  <div
+                    key={p.playerId}
+                    className="bg-gray-100 dark:bg-gray-700 p-3 rounded"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${p.isReady ? 'bg-success' : 'bg-gray-400'}`} />
+                        <span className="font-medium">{p.username}</span>
+                        {p.playerId === lobby.hostPlayerId && (
+                          <span className="text-xs bg-primary text-white px-2 py-1 rounded">
+                            HOST
+                          </span>
+                        )}
+                        {!p.isConnected && (
+                          <span className="text-xs bg-gray-500 text-white px-2 py-1 rounded">
+                            Disconnected
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <div className="flex">
+                          {Array.from({ length: p.currentLives }).map((_, i) => (
+                            <span key={i} className="text-red-500">❤️</span>
+                          ))}
+                        </div>
+                        
+                        {isHost && p.playerId !== player?.playerId && (
+                          <button
+                            onClick={() => handleKickPlayer(p.playerId)}
+                            className="text-xs text-red-500 hover:text-red-700"
+                          >
+                            Kick
+                          </button>
+                        )}
+                      </div>
                     </div>
                     
-                    {isHost && p.playerId !== player?.playerId && (
-                      <button
-                        onClick={() => handleKickPlayer(p.playerId)}
-                        className="text-xs text-red-500 hover:text-red-700"
-                      >
-                        Kick
-                      </button>
+                    {stats && (
+                      <div className="flex gap-4 text-xs text-gray-600 dark:text-gray-400 ml-6">
+                        <span className="flex items-center gap-1">
+                          <span className="font-bold text-yellow-600">🏆</span>
+                          {stats.gamesWon || 0} wins
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="font-bold text-blue-600">🎯</span>
+                          {stats.minigamesWon || 0} minigames
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="font-bold text-green-600">🎮</span>
+                          {stats.gamesPlayed || 0} games
+                        </span>
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 

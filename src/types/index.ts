@@ -81,7 +81,8 @@ export interface ServerToClientEvents {
   minigameStart: (minigame: MinigameConfig) => void
   minigameUpdate: (data: any) => void
   minigameEnd: (outcome: MinigameOutcome) => void
-  gameOver: (winnerId: string, winnerUsername: string) => void
+  gameOver: (data: { winnerId: string; winnerUsername: string }) => void
+  returnToLobby: () => void
   error: (message: string) => void
   kicked: () => void
 }
