@@ -11,6 +11,11 @@ export function useSocket() {
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
       path: '/api/socket',
       addTrailingSlash: false,
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5,
     })
 
     socket.on('connect', () => {
@@ -18,9 +23,13 @@ export function useSocket() {
       setIsConnected(true)
     })
 
-    socket.on('disconnect', () => {
-      console.log('Socket disconnected')
+    socket.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason)
       setIsConnected(false)
+    })
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error)
     })
 
     socketRef.current = socket

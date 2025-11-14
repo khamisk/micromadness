@@ -24,9 +24,15 @@ export default async function handler(
       path: '/api/socket',
       addTrailingSlash: false,
       cors: {
-        origin: '*',
+        origin: process.env.NODE_ENV === 'production' 
+          ? [process.env.RAILWAY_PUBLIC_DOMAIN || '*'] 
+          : '*',
         methods: ['GET', 'POST'],
+        credentials: true,
       },
+      transports: ['websocket', 'polling'],
+      pingTimeout: 60000,
+      pingInterval: 25000,
     })
 
     io.on('connection', (socket: Socket) => {
