@@ -9,8 +9,11 @@ export class TeamTugOfWar extends BaseMinigame {
   readonly type: MinigameType = 'passFail'
   
   private teams: Map<string, 'left' | 'right'> = new Map()
+  private teamMembers: { left: any[], right: any[] } = { left: [], right: [] }
   private leftScore = 0
   private rightScore = 0
+  private playerPresses: Map<string, number> = new Map()
+  private lastBroadcast = 0
 
   constructor(duration: number, players: any[]) {
     super(duration, players)
@@ -20,7 +23,11 @@ export class TeamTugOfWar extends BaseMinigame {
     const mid = Math.floor(shuffled.length / 2)
     
     for (let i = 0; i < shuffled.length; i++) {
-      this.teams.set(shuffled[i].playerId, i < mid ? 'left' : 'right')
+      const player = shuffled[i]
+      const team = i < mid ? 'left' : 'right'
+      this.teams.set(player.playerId, team)
+      this.teamMembers[team].push(player)
+      this.playerPresses.set(player.playerId, 0)
     }
   }
 
@@ -29,7 +36,12 @@ export class TeamTugOfWar extends BaseMinigame {
     for (const [playerId, team] of this.teams) {
       teamAssignments[playerId] = team
     }
-    return { teams: teamAssignments }
+    return { 
+      teams: teamAssignments,
+      teamMembers: this.teamMembers,
+      leftScore: this.leftScore,
+      rightScore: this.rightScore,
+    }
   }
 
   handleInput(playerId: string, data: any) {
@@ -42,7 +54,31 @@ export class TeamTugOfWar extends BaseMinigame {
       } else {
         this.rightScore++
       }
+      
+      this.playerPresses.set(playerId, (this.playerPresses.get(playerId) || 0) + 1)
+      
+      // Broadcast state update (throttled to 60fps)
+      const now = Date.now()
+      if (now - this.lastBroadcast > 16) {
+        this.lastBroadcast = now
+        this.broadcastState()
+      }
     }
+  }
+
+  private broadcastState() {
+    const ropePosition = (this.leftScore - this.rightScore) / 10 // Normalized
+    const playerStats: Record<string, number> = {}
+    for (const [playerId, presses] of this.playerPresses) {
+      playerStats[playerId] = presses
+    }
+    
+    this.emitToAll('tugOfWarUpdate', {
+      ropePosition: Math.max(-50, Math.min(50, ropePosition)),
+      leftScore: this.leftScore,
+      rightScore: this.rightScore,
+      playerStats,
+    })
   }
 
   protected calculatePlayersLostLife(results: MinigameResult[]): string[] {

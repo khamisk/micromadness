@@ -1,9 +1,12 @@
 import { MinigameConfig, MinigameOutcome, MinigameResult, LobbyPlayer, MinigameType } from '@/types'
+import { Server as SocketIOServer } from 'socket.io'
 
 export abstract class BaseMinigame {
   protected duration: number
   protected players: LobbyPlayer[]
   protected results: Map<string, MinigameResult> = new Map()
+  protected io?: SocketIOServer
+  protected lobbyCode?: string
   
   abstract readonly id: string
   abstract readonly name: string
@@ -21,6 +24,17 @@ export abstract class BaseMinigame {
         passed: false,
         performanceMetric: 0,
       })
+    }
+  }
+
+  setSocketIO(io: SocketIOServer, lobbyCode: string) {
+    this.io = io
+    this.lobbyCode = lobbyCode
+  }
+
+  protected emitToAll(event: string, data: any) {
+    if (this.io && this.lobbyCode) {
+      this.io.to(this.lobbyCode).emit(event, data)
     }
   }
 

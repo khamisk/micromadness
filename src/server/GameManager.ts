@@ -463,4 +463,8 @@ export class GameManager {
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
   }
+
+  getIO() {
+    return this.io
+  }
 }

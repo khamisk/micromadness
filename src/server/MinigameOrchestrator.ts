@@ -59,6 +59,13 @@ export class MinigameOrchestrator {
 
     // Instantiate minigame
     this.currentMinigame = new MinigameClass(duration, alivePlayers)
+    
+    // Pass Socket.IO instance for real-time updates
+    const lobbyCode = this.gameManager.getLobbyCode()
+    const io = this.gameManager.getIO()
+    if (lobbyCode && io) {
+      this.currentMinigame.setSocketIO(io, lobbyCode)
+    }
 
     return this.currentMinigame.getConfig()
   }
