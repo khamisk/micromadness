@@ -106,12 +106,19 @@ function PerfectStopwatchGame({ minigame, onInput }: { minigame: MinigameConfig;
   }
 
   const progress = Math.min((elapsed / targetSeconds) * 100, 100)
+  const precision = clicked ? Math.abs(elapsed - targetSeconds).toFixed(3) : ''
+  const isPerfect = clicked && Math.abs(elapsed - targetSeconds) < 0.05
 
   return (
     <div className="bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg p-12 text-center">
-      <h3 className="text-2xl font-bold mb-8 text-gray-800">
-        Click at exactly {targetSeconds}.00 seconds!
+      <h3 className="text-2xl font-bold mb-4 text-gray-800">
+        ⏱️ Click at exactly {targetSeconds}.00 seconds! ⏱️
       </h3>
+      {clicked && (
+        <div className={`text-3xl font-bold mb-4 ${isPerfect ? 'text-green-600 animate-pulse' : 'text-orange-600'}`}>
+          {isPerfect ? '🎯 PERFECT!' : `±${precision}s`}
+        </div>
+      )}
       
       {/* Visual timer ring */}
       <div className="relative inline-block mb-8">
@@ -179,11 +186,19 @@ function AdaptiveMashGame({ minigame, onInput }: { minigame: MinigameConfig; onI
   }, [currentSegment, keySequence, onInput])
 
   const currentKey = keySequence[currentSegment] || '?'
+  const combo = Math.floor(score / 3)
+  const progress = ((currentSegment + 1) / keySequence.length) * 100
 
   return (
-    <div className="bg-gradient-to-br from-yellow-100 to-orange-100 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4 text-gray-800">Mash the keys as fast as you can!</h3>
-      <div className="mb-8 relative">
+    <div className="bg-gradient-to-br from-yellow-100 to-orange-100 rounded-lg p-8 text-center">
+      <h3 className="text-2xl font-bold mb-2 text-gray-800">⚡ Mash the keys as fast as you can! ⚡</h3>
+      
+      {/* Progress bar */}
+      <div className="w-full max-w-md mx-auto mb-4 bg-gray-300 rounded-full h-3 overflow-hidden">
+        <div className="bg-gradient-to-r from-orange-500 to-red-600 h-full transition-all duration-300" style={{ width: `${progress}%` }} />
+      </div>
+      
+      <div className="mb-6 relative">
         <div className={`inline-block px-20 py-16 rounded-3xl shadow-2xl transition-all duration-100 ${
           flash ? 'bg-gradient-to-br from-green-400 to-green-600 scale-110' : 'bg-gradient-to-br from-orange-500 to-red-600'
         }`}>
@@ -191,13 +206,22 @@ function AdaptiveMashGame({ minigame, onInput }: { minigame: MinigameConfig; onI
             {currentKey}
           </div>
         </div>
+        {flash && combo > 0 && (
+          <div className="absolute top-0 right-0 text-3xl font-bold text-yellow-400 animate-bounce">
+            🔥 x{combo}
+          </div>
+        )}
       </div>
-      <div className="flex items-center justify-center gap-4">
-        <div className="text-3xl font-bold text-gray-700 bg-white px-8 py-3 rounded-full shadow-lg">
-          ⚡ Score: <span className="text-orange-600">{score}</span>
+      
+      <div className="flex items-center justify-center gap-6">
+        <div className="bg-white px-8 py-3 rounded-full shadow-lg">
+          <span className="text-3xl font-bold text-orange-600">⚡ {score}</span>
+        </div>
+        <div className="bg-white px-6 py-3 rounded-full shadow-lg">
+          <span className="text-xl font-bold text-red-600">🔥 x{combo}</span>
         </div>
         <div className="text-sm text-gray-600">
-          Segment {currentSegment + 1}/{keySequence.length}
+          {currentSegment + 1}/{keySequence.length}
         </div>
       </div>
     </div>
@@ -209,14 +233,24 @@ function SpeedTypistGame({ minigame, onInput }: { minigame: MinigameConfig; onIn
   const sentence = minigame.config?.sentence || 'Type this sentence!'
   const [input, setInput] = useState('')
   const [completed, setCompleted] = useState(false)
+  const [startTime] = useState(Date.now())
+  const [errors, setErrors] = useState(0)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
+    
+    // Count errors
+    if (value.length > input.length && value[value.length - 1] !== sentence[value.length - 1]) {
+      setErrors(prev => prev + 1)
+    }
+    
     setInput(value)
     
     if (value === sentence && !completed) {
       setCompleted(true)
-      onInput({ text: value, timestamp: Date.now() })
+      const elapsed = (Date.now() - startTime) / 1000
+      const wpm = Math.round((sentence.split(' ').length / elapsed) * 60)
+      onInput({ text: value, timestamp: Date.now(), wpm, errors })
     }
   }
 
@@ -224,25 +258,57 @@ function SpeedTypistGame({ minigame, onInput }: { minigame: MinigameConfig; onIn
     e.preventDefault()
   }
 
+  const accuracy = input.length > 0 ? Math.round((1 - errors / input.length) * 100) : 100
+  const elapsed = (Date.now() - startTime) / 1000
+  const currentWpm = input.length > 0 ? Math.round((sentence.split(' ').length / elapsed) * 60) : 0
+
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12">
+    <div className="bg-gradient-to-br from-cyan-100 to-blue-100 rounded-lg p-12">
       <div className="text-center mb-8">
-        <div className="text-3xl font-mono font-bold bg-gray-900 text-white p-6 rounded mb-6">
-          {sentence}
+        <h3 className="text-2xl font-bold mb-6 text-gray-800">⌨️ Type as fast as you can! ⌨️</h3>
+        
+        {/* Character-by-character display */}
+        <div className="text-3xl font-mono font-bold bg-gray-900 p-6 rounded mb-6 text-left max-w-3xl mx-auto">
+          {sentence.split('').map((char: string, i: number) => (
+            <span key={i} className={
+              i < input.length 
+                ? input[i] === char ? 'text-green-400' : 'text-red-400 underline'
+                : i === input.length ? 'text-white bg-blue-500' : 'text-gray-500'
+            }>
+              {char}
+            </span>
+          ))}
         </div>
+        
         <input
           type="text"
           value={input}
           onChange={handleChange}
           onPaste={handlePaste}
           disabled={completed}
-          className="input-field text-2xl text-center w-full max-w-2xl font-mono"
-          placeholder="Type here..."
+          className="text-2xl text-center w-full max-w-3xl font-mono bg-white border-4 border-blue-400 rounded-lg px-6 py-4 focus:outline-none focus:border-blue-600"
+          placeholder="Start typing..."
           autoFocus
         />
+        
+        <div className="flex justify-center gap-6 mt-6">
+          <div className="bg-white px-6 py-3 rounded-lg shadow-lg">
+            <div className="text-3xl font-bold text-blue-600">{currentWpm}</div>
+            <div className="text-sm text-gray-600">WPM</div>
+          </div>
+          <div className="bg-white px-6 py-3 rounded-lg shadow-lg">
+            <div className="text-3xl font-bold text-green-600">{accuracy}%</div>
+            <div className="text-sm text-gray-600">Accuracy</div>
+          </div>
+          <div className="bg-white px-6 py-3 rounded-lg shadow-lg">
+            <div className="text-3xl font-bold text-orange-600">{input.length}/{sentence.length}</div>
+            <div className="text-sm text-gray-600">Progress</div>
+          </div>
+        </div>
+        
         {completed && (
-          <div className="mt-4 text-green-600 font-bold text-xl">
-            ✓ Complete!
+          <div className="mt-6 text-green-600 font-bold text-3xl animate-bounce">
+            ✓ Complete! {currentWpm} WPM
           </div>
         )}
       </div>
@@ -1367,6 +1433,7 @@ function GroupCoinflipGame({ minigame, onInput }: { minigame: MinigameConfig; on
 // Cursor Chain Reaction - Avoid bouncing balls
 function CursorChainReactionGame({ minigame, onInput }: { minigame: MinigameConfig; onInput: (data: any) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [startTime] = useState(Date.now())
   const [balls, setBalls] = useState<Array<{x: number, y: number, vx: number, vy: number, radius: number}>>([])
   const [hit, setHit] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 225, y: 225 })
@@ -1461,17 +1528,41 @@ function CursorChainReactionGame({ minigame, onInput }: { minigame: MinigameConf
     })
   }
 
+  const surviveTime = Math.floor((Date.now() - startTime) / 1000)
+
   return (
-    <div className="bg-white bg-opacity-90 rounded-lg p-12 text-center">
-      <h3 className="text-xl font-bold mb-4">Avoid the bouncing balls!</h3>
-      <p className="text-gray-600 mb-4">Balls: {balls.length} | {hit ? '❌ HIT!' : '✅ Surviving'}</p>
+    <div className="bg-gradient-to-br from-purple-100 to-indigo-100 rounded-lg p-8 text-center">
+      <h3 className="text-2xl font-bold mb-2 text-gray-800">🔴 Chain Reaction! 🔴</h3>
+      <p className="text-sm text-gray-600 mb-4">Avoid the bouncing balls with your cursor!</p>
+      
+      <div className="flex justify-center gap-4 mb-4">
+        <div className="bg-white px-6 py-3 rounded-lg shadow-lg">
+          <div className={`text-3xl font-bold ${hit ? 'text-red-600' : 'text-green-600'}`}>
+            {hit ? '❌' : '✅'}
+          </div>
+          <div className="text-xs text-gray-600">{hit ? 'Hit!' : 'Alive'}</div>
+        </div>
+        <div className="bg-white px-6 py-3 rounded-lg shadow-lg">
+          <div className="text-3xl font-bold text-purple-600">{balls.length}</div>
+          <div className="text-xs text-gray-600">Balls</div>
+        </div>
+        <div className="bg-white px-6 py-3 rounded-lg shadow-lg">
+          <div className="text-3xl font-bold text-indigo-600">{surviveTime}s</div>
+          <div className="text-xs text-gray-600">Survived</div>
+        </div>
+      </div>
+      
       <canvas 
         ref={canvasRef} 
         width={450} 
         height={450}
         onMouseMove={handleMouseMove}
-        className="border-4 border-gray-800 mx-auto rounded cursor-none"
+        className="border-4 border-gray-800 mx-auto rounded-lg cursor-none bg-gradient-to-br from-gray-50 to-gray-100"
       />
+      
+      <div className="mt-4 text-sm text-gray-600">
+        💡 New balls spawn every 3 seconds!
+      </div>
     </div>
   )
 }
