@@ -157,7 +157,7 @@ function PerfectStopwatchGame({ minigame, onInput }: { minigame: MinigameConfig;
       ctx.strokeStyle = gradient
       ctx.lineWidth = 20
       ctx.lineCap = 'round'
-      ctx.shadowBlur = 20
+      ctx.shadowBlur = 20 + Math.sin(Date.now() / 200) * 10
       ctx.shadowColor = '#8b5cf6'
       ctx.beginPath()
       ctx.arc(centerX, centerY, radius, startAngle, endAngle)
@@ -843,6 +843,17 @@ function StickmanDodgefallGame({ minigame, onInput }: { minigame: MinigameConfig
   const [dodgeCount, setDodgeCount] = useState(0)
   const [particles, setParticles] = useState<Array<{x: number, y: number, vx: number, vy: number, life: number, color: string}>>([])
   const [comboCount, setComboCount] = useState(0)
+  const [otherPlayers, setOtherPlayers] = useState<Array<{username: string, x: number, survived: boolean}>>([])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).io) {
+      const socket = (window as any).io
+      socket.on('dodgefallPositions', (data: Array<{username: string, x: number, survived: boolean}>) => {
+        setOtherPlayers(data)
+      })
+      return () => socket.off('dodgefallPositions')
+    }
+  }, [])
 
   useEffect(() => {
     const spawnInterval = setInterval(() => {
@@ -864,11 +875,13 @@ function StickmanDodgefallGame({ minigame, onInput }: { minigame: MinigameConfig
     const handleKey = (e: KeyboardEvent) => {
       if (!survived) return
       if (e.key === 'ArrowLeft') {
-        setPlayerX(prev => Math.max(40, prev - 45))
-        onInput({ action: 'move', direction: 'left', x: Math.max(40, playerX - 45), timestamp: Date.now() })
+        const newX = Math.max(40, playerX - 45)
+        setPlayerX(newX)
+        onInput({ action: 'move', direction: 'left', x: newX, survived, timestamp: Date.now() })
       } else if (e.key === 'ArrowRight') {
-        setPlayerX(prev => Math.min(560, prev + 45))
-        onInput({ action: 'move', direction: 'right', x: Math.min(560, playerX + 45), timestamp: Date.now() })
+        const newX = Math.min(560, playerX + 45)
+        setPlayerX(newX)
+        onInput({ action: 'move', direction: 'right', x: newX, survived, timestamp: Date.now() })
       }
     }
 
@@ -977,6 +990,46 @@ function StickmanDodgefallGame({ minigame, onInput }: { minigame: MinigameConfig
       setFallingObjects(newObjects)
 
       const playerY = canvas.height - 120
+
+      // Draw other players (semi-transparent stickmen)
+      otherPlayers.forEach(op => {
+        if (Math.abs(op.x - playerX) > 20) {
+          const opHeadY = playerY - Math.abs(Math.sin(Date.now() / 300 + op.x)) * 3
+          ctx.globalAlpha = 0.5
+          ctx.fillStyle = op.survived ? '#94a3b8' : '#64748b'
+          ctx.beginPath()
+          ctx.arc(op.x, opHeadY, 18, 0, Math.PI * 2)
+          ctx.fill()
+          
+          ctx.strokeStyle = op.survived ? '#94a3b8' : '#64748b'
+          ctx.lineWidth = 8
+          ctx.lineCap = 'round'
+          ctx.beginPath()
+          ctx.moveTo(op.x, opHeadY + 18)
+          ctx.lineTo(op.x, playerY + 40)
+          ctx.moveTo(op.x, playerY + 15)
+          ctx.lineTo(op.x - 20, playerY + 25)
+          ctx.moveTo(op.x, playerY + 15)
+          ctx.lineTo(op.x + 20, playerY + 25)
+          ctx.moveTo(op.x, playerY + 40)
+          ctx.lineTo(op.x - 12, playerY + 60)
+          ctx.moveTo(op.x, playerY + 40)
+          ctx.lineTo(op.x + 12, playerY + 60)
+          ctx.stroke()
+          
+          ctx.globalAlpha = 1
+          ctx.fillStyle = '#fff'
+          ctx.strokeStyle = '#000'
+          ctx.lineWidth = 2
+          ctx.font = 'bold 11px Arial'
+          ctx.textAlign = 'center'
+          ctx.strokeText(op.username.substring(0, 8), op.x, playerY - 50)
+          ctx.fillText(op.username.substring(0, 8), op.x, playerY - 50)
+        }
+      })
+      ctx.globalAlpha = 1
+
+      // Draw main player (prominent)
       const headY = playerY - Math.abs(Math.sin(Date.now() / 300)) * 3
       
       ctx.fillStyle = survived ? '#3b82f6' : '#7f1d1d'
@@ -1577,8 +1630,8 @@ function StayInCircleGame({ minigame, onInput }: { minigame: MinigameConfig; onI
       </p>
       
       <div className="flex justify-center gap-8 mb-6">
-        <div className={`px-8 py-4 rounded-2xl shadow-2xl ${inCircle ? 'bg-emerald-500' : 'bg-red-600'} text-white`}>
-          <div className="text-5xl font-black">{inCircle ? '✅ SAFE' : '❌ OUT!'}</div>
+        <div className={`px-8 py-4 rounded-2xl shadow-2xl ${inCircle ? 'bg-emerald-500' : 'bg-red-600'} text-white ${radius < 50 ? 'animate-pulse' : ''}`}>
+          <div className="text-5xl font-black">{inCircle ? (radius < 50 ? '⚠️ DANGER' : '✅ SAFE') : '❌ OUT!'}</div>
         </div>
         <div className="bg-white px-8 py-4 rounded-2xl shadow-2xl">
           <div className="text-6xl font-black text-purple-600">{(timeInside / 1000).toFixed(1)}</div>
@@ -1659,9 +1712,13 @@ function MemoryGridGame({ minigame, onInput }: { minigame: MinigameConfig; onInp
         ))}
       </div>
       
-      <div className="bg-white px-12 py-6 rounded-2xl shadow-2xl inline-block">
-        <div className="text-6xl font-black text-purple-600">{selected.length}/{pattern.length}</div>
-        <div className="text-sm font-bold text-gray-700">Tiles Selected</div>
+      <div className={`px-12 py-6 rounded-2xl shadow-2xl inline-block ${selected.length === pattern.length ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-white'}`}>
+        <div className={`text-6xl font-black ${selected.length === pattern.length ? 'text-white animate-bounce' : 'text-purple-600'}`}>
+          {selected.length === pattern.length ? '✓' : `${selected.length}/${pattern.length}`}
+        </div>
+        <div className={`text-sm font-bold ${selected.length === pattern.length ? 'text-green-100' : 'text-gray-700'}`}>
+          {selected.length === pattern.length ? 'COMPLETE!' : 'Tiles Selected'}
+        </div>
       </div>
     </div>
   )
@@ -2074,14 +2131,27 @@ function BulletHellGame({ minigame, onInput }: { minigame: MinigameConfig; onInp
   const [survived, setSurvived] = useState(true)
   const [mousePos, setMousePos] = useState({ x: 300, y: 400 })
   const [dodged, setDodged] = useState(0)
-  const [bullets] = useState<Array<{x: number, y: number, vx: number, vy: number, size: number}>>(
-    Array.from({ length: 15 }, () => ({
+  const [bullets, setBullets] = useState<Array<{x: number, y: number, vx: number, vy: number, size: number}>>(
+    Array.from({ length: 8 }, () => ({
       x: Math.random() * 600, y: -20,
       vx: (Math.random() - 0.5) * 4, vy: Math.random() * 3 + 2,
       size: Math.random() * 8 + 6
     }))
   )
   const [trail, setTrail] = useState<Array<{x: number, y: number, life: number}>>([])
+
+  useEffect(() => {
+    if (survived) {
+      const spawnInterval = setInterval(() => {
+        setBullets(prev => [...prev, {
+          x: Math.random() * 600, y: -20,
+          vx: (Math.random() - 0.5) * 4, vy: Math.random() * 3 + 2,
+          size: Math.random() * 8 + 6
+        }])
+      }, 2000)
+      return () => clearInterval(spawnInterval)
+    }
+  }, [survived])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -2358,7 +2428,7 @@ function DeadlyCornersGame({ minigame, onInput }: { minigame: MinigameConfig; on
         ))}
         
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-gradient-to-br from-red-600 to-orange-600 rounded-full w-48 h-48 flex items-center justify-center text-white text-7xl font-black shadow-2xl border-8 border-yellow-400 animate-pulse">
+          <div className={`bg-gradient-to-br from-red-600 to-orange-600 rounded-full w-48 h-48 flex items-center justify-center text-white text-7xl font-black shadow-2xl border-8 border-yellow-400 ${timeLeft <= 2 ? 'animate-ping' : 'animate-pulse'}`}>
             {timeLeft}
           </div>
         </div>
@@ -2565,7 +2635,7 @@ function CursorChainReactionGame({ minigame, onInput }: { minigame: MinigameConf
       ctx.shadowBlur = 0
     }
 
-    const animationId = setInterval(animate, 1000 / 60)
+    const animationId = setInterval(animate, 1000 / 30)
     return () => clearInterval(animationId)
   }, [balls, mousePos, hit, onInput])
 
@@ -2627,8 +2697,19 @@ function StickmanCannonJumpGame({ minigame, onInput }: { minigame: MinigameConfi
   const [fireRate, setFireRate] = useState(2000)
   const [jumps, setJumps] = useState(0)
   const [hit, setHit] = useState(false)
-  const [particles, setParticles] = useState<Array<{x: number, y: number, vx: number, vy: number, life: number, color: string}>>([])  
-  const [otherPlayers] = useState([{ username: 'CPU1', y: 340, color: '#ef4444' }, { username: 'CPU2', y: 280, color: '#22c55e' }])
+  const [particles, setParticles] = useState<Array<{x: number, y: number, vx: number, vy: number, life: number, color: string}>>([])
+  const [otherPlayers, setOtherPlayers] = useState<Array<{username: string, y: number, color: string}>>([])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).io) {
+      const socket = (window as any).io
+      socket.on('cannonJumpPositions', (data: Array<{username: string, y: number}>) => {
+        const colors = ['#ef4444', '#22c55e', '#3b82f6', '#fbbf24', '#a855f7']
+        setOtherPlayers(data.map((p, i) => ({ ...p, color: colors[i % colors.length] })))
+      })
+      return () => socket.off('cannonJumpPositions')
+    }
+  }, [])
 
   useEffect(() => {
     const fireInterval = setInterval(() => {
@@ -2653,7 +2734,7 @@ function StickmanCannonJumpGame({ minigame, onInput }: { minigame: MinigameConfi
         setIsJumping(true)
         setVelocity(-16)
         setJumps(prev => prev + 1)
-        onInput({ action: 'jump', timestamp: Date.now() })
+        onInput({ action: 'jump', y: playerY, timestamp: Date.now() })
         
         for (let i = 0; i < 10; i++) {
           setParticles(prev => [...prev, {
@@ -2788,50 +2869,50 @@ function StickmanCannonJumpGame({ minigame, onInput }: { minigame: MinigameConfi
       setCannonballs(newBalls)
 
       // Draw other players (multiplayer visibility)
-      otherPlayers.forEach(p => {
-        const drawCPU = (x: number, y: number, color: string, name: string) => {
-          const cpuY = y + Math.sin(Date.now() / 200 + x) * 3
-          
-          ctx.fillStyle = color
-          ctx.shadowBlur = 12
-          ctx.shadowColor = color
-          ctx.beginPath()
-          ctx.arc(x, cpuY - 25, 14, 0, Math.PI * 2)
-          ctx.fill()
-          ctx.shadowBlur = 0
-          
-          ctx.fillStyle = '#fff'
-          ctx.beginPath()
-          ctx.arc(x - 5, cpuY - 27, 3, 0, Math.PI * 2)
-          ctx.arc(x + 5, cpuY - 27, 3, 0, Math.PI * 2)
-          ctx.fill()
-          
-          ctx.strokeStyle = color
-          ctx.lineWidth = 5
-          ctx.lineCap = 'round'
-          ctx.beginPath()
-          ctx.moveTo(x, cpuY - 11)
-          ctx.lineTo(x, cpuY + 8)
-          ctx.moveTo(x, cpuY - 3)
-          ctx.lineTo(x - 12, cpuY + 3)
-          ctx.moveTo(x, cpuY - 3)
-          ctx.lineTo(x + 12, cpuY + 3)
-          ctx.moveTo(x, cpuY + 8)
-          ctx.lineTo(x - 8, cpuY + 20)
-          ctx.moveTo(x, cpuY + 8)
-          ctx.lineTo(x + 8, cpuY + 20)
-          ctx.stroke()
-          
-          ctx.fillStyle = '#fff'
-          ctx.strokeStyle = '#000'
-          ctx.lineWidth = 2
-          ctx.font = 'bold 11px Arial'
-          ctx.textAlign = 'center'
-          ctx.strokeText(name, x, cpuY - 40)
-          ctx.fillText(name, x, cpuY - 40)
-        }
+      otherPlayers.forEach((p, i) => {
+        const opX = 180 + i * 60
+        const opY = p.y
+        const animOpY = opY + Math.sin(Date.now() / 200 + opX) * 3
         
-        drawCPU(p.y === 280 ? 300 : 250, p.y, p.color, p.username)
+        ctx.globalAlpha = 0.6
+        ctx.fillStyle = p.color
+        ctx.shadowBlur = 12
+        ctx.shadowColor = p.color
+        ctx.beginPath()
+        ctx.arc(opX, animOpY - 25, 14, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.shadowBlur = 0
+        
+        ctx.fillStyle = '#fff'
+        ctx.beginPath()
+        ctx.arc(opX - 5, animOpY - 27, 3, 0, Math.PI * 2)
+        ctx.arc(opX + 5, animOpY - 27, 3, 0, Math.PI * 2)
+        ctx.fill()
+        
+        ctx.strokeStyle = p.color
+        ctx.lineWidth = 5
+        ctx.lineCap = 'round'
+        ctx.beginPath()
+        ctx.moveTo(opX, animOpY - 11)
+        ctx.lineTo(opX, animOpY + 8)
+        ctx.moveTo(opX, animOpY - 3)
+        ctx.lineTo(opX - 12, animOpY + 3)
+        ctx.moveTo(opX, animOpY - 3)
+        ctx.lineTo(opX + 12, animOpY + 3)
+        ctx.moveTo(opX, animOpY + 8)
+        ctx.lineTo(opX - 8, animOpY + 20)
+        ctx.moveTo(opX, animOpY + 8)
+        ctx.lineTo(opX + 8, animOpY + 20)
+        ctx.stroke()
+        
+        ctx.globalAlpha = 1
+        ctx.fillStyle = '#fff'
+        ctx.strokeStyle = '#000'
+        ctx.lineWidth = 2
+        ctx.font = 'bold 11px Arial'
+        ctx.textAlign = 'center'
+        ctx.strokeText(p.username.substring(0, 8), opX, animOpY - 40)
+        ctx.fillText(p.username.substring(0, 8), opX, animOpY - 40)
       })
 
       // Draw main player with detailed animation
@@ -3058,9 +3139,9 @@ function MathFlashRushGame({ minigame, onInput }: { minigame: MinigameConfig; on
         )}
       </div>
       
-      {streak >= 5 && (
+      {streak >= 3 && (
         <div className="mt-8 text-4xl font-black text-yellow-400 drop-shadow-2xl animate-bounce">
-          ⭐ INCREDIBLE STREAK! ⭐
+          {streak >= 10 ? '🔥 UNSTOPPABLE! 🔥' : streak >= 7 ? '⚡ ON FIRE! ⚡' : '⭐ HOT STREAK! ⭐'}
         </div>
       )}
     </div>

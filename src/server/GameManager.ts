@@ -245,8 +245,8 @@ export class GameManager {
       // Broadcast lobby state before each minigame
       this.broadcastLobbyState()
       
-      // Wait before starting next minigame
-      await this.sleep(3000)
+      // Wait before starting next minigame (6 seconds for better pacing)
+      await this.sleep(6000)
 
       // Select random minigame
       const minigame = this.minigameOrchestrator.selectRandomMinigame(this.lobby.settings)
