@@ -46,16 +46,34 @@ export class StickmanDodgefall extends BaseMinigame {
   }
 
   handleInput(playerId: string, data: any) {
-    const { position, action } = data
+    const { position, action, x, survived } = data
     
     if (action === 'move') {
-      this.playerPositions.set(playerId, Math.max(0, Math.min(100, position)))
+      const newPos = Math.max(0, Math.min(100, position || x || 50))
+      this.playerPositions.set(playerId, newPos)
+      // Broadcast positions to all players
+      this.broadcastPositions()
     } else if (action === 'hit') {
       const result = this.results.get(playerId)
       if (result) {
         result.passed = false
       }
+      this.broadcastPositions()
     }
+  }
+
+  private broadcastPositions() {
+    const positions = Array.from(this.playerPositions.entries())
+      .map(([id, x]) => {
+        const player = this.players.find(p => p.playerId === id)
+        const result = this.results.get(id)
+        return {
+          username: player?.username || 'Player',
+          x,
+          survived: result?.passed ?? true
+        }
+      })
+    this.emitToAll('dodgefallPositions', positions)
   }
 
   protected calculatePlayersLostLife(results: MinigameResult[]): string[] {

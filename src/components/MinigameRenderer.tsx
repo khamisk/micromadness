@@ -756,6 +756,27 @@ function PrecisionMazeGame({ minigame, onInput }: { minigame: MinigameConfig; on
       
       const pixel = ctx.getImageData(x, y, 1, 1).data
       
+      // Draw player cursor with glow
+      if (started && !completed && !touched) {
+        const pulseSize = 15 + Math.sin(Date.now() / 100) * 3
+        ctx.shadowBlur = 20 + Math.sin(Date.now() / 100) * 10
+        ctx.shadowColor = '#10b981'
+        ctx.fillStyle = '#34d399'
+        ctx.beginPath()
+        ctx.arc(x, y, pulseSize, 0, Math.PI * 2)
+        ctx.fill()
+        
+        // Outer glow ring
+        ctx.globalAlpha = 0.3
+        ctx.strokeStyle = '#10b981'
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(x, y, pulseSize + 8, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+        ctx.shadowBlur = 0
+      }
+      
       // Check if on start circle
       const startDist = Math.sqrt((x - path[0][0]) ** 2 + (y - path[0][1]) ** 2)
       if (startDist <= 20 && !started) {
@@ -1111,12 +1132,13 @@ function StickmanDodgefallGame({ minigame, onInput }: { minigame: MinigameConfig
       </p>
       
       <div className="mb-6 flex items-center justify-center gap-8">
-        <div className={`px-10 py-5 rounded-2xl shadow-2xl ${survived ? 'bg-green-500' : 'bg-red-600'} text-white`}>
+        <div className={`px-10 py-5 rounded-2xl shadow-2xl ${survived ? 'bg-green-500 animate-pulse' : 'bg-red-600'} text-white`}>
           <div className="text-5xl font-black">{survived ? '✅ ALIVE' : '💀 HIT!'}</div>
         </div>
-        <div className="bg-white px-10 py-5 rounded-2xl shadow-2xl">
+        <div className={`bg-white px-10 py-5 rounded-2xl shadow-2xl ${dodgeCount > 0 && dodgeCount % 5 === 0 ? 'animate-bounce border-4 border-yellow-400' : ''}`}>
           <div className="text-6xl font-black text-emerald-600">{dodgeCount}</div>
           <div className="text-sm font-bold text-gray-700">Dodged</div>
+          {dodgeCount > 0 && dodgeCount % 10 === 0 && <div className="text-2xl">🔥</div>}
         </div>
         {comboCount > 1 && (
           <div className="bg-gradient-to-r from-amber-400 to-orange-500 px-10 py-5 rounded-2xl shadow-2xl text-white animate-bounce">
@@ -1906,7 +1928,7 @@ function AverageBaitGame({ minigame, onInput }: { minigame: MinigameConfig; onIn
           onChange={(e) => setValue(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
           disabled={submitted}
-          className="text-9xl font-black text-center w-96 px-12 py-8 border-8 border-cyan-400 rounded-3xl focus:outline-none focus:ring-8 focus:ring-cyan-300 disabled:bg-gray-300 text-cyan-600 placeholder-gray-400 shadow-2xl"
+          className={`text-9xl font-black text-center w-96 px-12 py-8 border-8 border-cyan-400 rounded-3xl focus:outline-none focus:ring-8 focus:ring-cyan-300 disabled:bg-gray-300 text-cyan-600 placeholder-gray-400 shadow-2xl ${value && !submitted ? 'animate-pulse' : ''}`}
           placeholder="?"
           min="0"
           max="100"
@@ -1996,7 +2018,7 @@ function VoteToKillGame({ minigame, onInput }: { minigame: MinigameConfig; onInp
         
         if (isVoted) {
           ctx.fillStyle = '#dc2626'
-          ctx.shadowBlur = 30
+          ctx.shadowBlur = 30 + Math.sin(Date.now() / 100) * 15
           ctx.shadowColor = '#ef4444'
         } else if (isHovered) {
           ctx.fillStyle = '#ea580c'
@@ -2199,7 +2221,15 @@ function BulletHellGame({ minigame, onInput }: { minigame: MinigameConfig; onInp
           b.x = Math.random() * canvas.width
           b.vx = (Math.random() - 0.5) * 4
           b.vy = Math.random() * 3 + 2
-          if (survived) setDodged(prev => prev + 1)
+          if (survived) {
+            setDodged(prev => prev + 1)
+            // Create celebration particles
+            const newTrail = [...trail]
+            for (let i = 0; i < 5; i++) {
+              newTrail.push({ x: b.x, y: canvas.height - 10, life: 20 })
+            }
+            setTrail(newTrail)
+          }
         }
         
         const dist = Math.sqrt((b.x - mousePos.x) ** 2 + (b.y - mousePos.y) ** 2)
@@ -2227,8 +2257,19 @@ function BulletHellGame({ minigame, onInput }: { minigame: MinigameConfig; onInp
       ctx.globalAlpha = 1
       setTrail(updated)
 
+      // Rainbow pulsing effect for player
+      for (let i = 3; i > 0; i--) {
+        ctx.globalAlpha = 0.3
+        const hue = (Date.now() / 10 + i * 30) % 360
+        ctx.fillStyle = survived ? `hsl(${hue}, 70%, 60%)` : '#ef4444'
+        ctx.beginPath()
+        ctx.arc(mousePos.x, mousePos.y, 12 + i * 4, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      ctx.globalAlpha = 1
+      
       ctx.fillStyle = survived ? '#3b82f6' : '#ef4444'
-      ctx.shadowBlur = 25
+      ctx.shadowBlur = 25 + Math.sin(Date.now() / 100) * 10
       ctx.shadowColor = survived ? '#3b82f6' : '#ef4444'
       ctx.beginPath()
       ctx.arc(mousePos.x, mousePos.y, 12, 0, Math.PI * 2)
@@ -2623,11 +2664,25 @@ function CursorChainReactionGame({ minigame, onInput }: { minigame: MinigameConf
 
       setBalls(newBalls)
 
+      // Draw cursor with enhanced glow and pulse effect
+      if (!hit) {
+        const pulseSize = 12 + Math.sin(Date.now() / 100) * 2
+        // Outer glow rings
+        for (let i = 3; i > 0; i--) {
+          ctx.globalAlpha = 0.2
+          ctx.fillStyle = '#22c55e'
+          ctx.beginPath()
+          ctx.arc(mousePos.x, mousePos.y, pulseSize + i * 6, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        ctx.globalAlpha = 1
+      }
+      
       const cursorGrad = ctx.createRadialGradient(mousePos.x, mousePos.y, 0, mousePos.x, mousePos.y, 12)
       cursorGrad.addColorStop(0, hit ? '#ff0000' : '#4ade80')
       cursorGrad.addColorStop(1, hit ? '#991b1b' : '#15803d')
       ctx.fillStyle = cursorGrad
-      ctx.shadowBlur = 20
+      ctx.shadowBlur = hit ? 40 : 20 + Math.sin(Date.now() / 100) * 10
       ctx.shadowColor = hit ? '#ef4444' : '#22c55e'
       ctx.beginPath()
       ctx.arc(mousePos.x, mousePos.y, 12, 0, Math.PI * 2)
